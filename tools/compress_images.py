@@ -143,10 +143,21 @@ def _to_srgb(image: Image.Image) -> Image.Image:
     converted = ImageCms.profileToProfile(
         image,
         source,
-        ImageCms.createProfile("sRGB"),
+        _srgb(),
         outputMode=image.mode,
     )
     return image if converted is None else converted
+
+
+def _srgb() -> ImageCms.ImageCmsProfile:
+    """Return Pillow's built-in sRGB profile.
+
+    Returns
+    -------
+    ImageCms.ImageCmsProfile
+        The profile to convert into.
+    """
+    return ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB"))  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]  # Pillow's stubs leave createProfile's return type unknown
 
 
 def _clean(image: Image.Image) -> Image.Image:
@@ -445,7 +456,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     int
         0 normally; with ``--check``, 1 when any file would change.
     """
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description=(__doc__ or "").partition("\n")[0]
+    )
     parser.add_argument("paths", nargs="+", type=Path)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)

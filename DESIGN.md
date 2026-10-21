@@ -66,6 +66,7 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 | Date | Task | Goal | Change | Measured effect |
 |---|---|---|---|---|
 | 2026-10-21 | T1 | 3 | `docs/conf.py` loads `sphinx.ext.todo` | docs build with `-W`: 1 error before, 0 after (exit 0) |
+| 2026-10-21 | T2 | 5 | `EA.__init__` disposes the restart source engine, also on its error paths | `test_ea_restart.py` alone, `-W default`: 11 warnings before, 10 after; full suite 79 before, 77 after |
 
 ## Gotchas
 

@@ -122,28 +122,32 @@ class EA:
                 raise FileNotFoundError(msg)
 
             source_engine = create_engine(f"sqlite:///{source_db}")
-            with Session(source_engine) as session:
-                if restart_gen is None:
-                    # MAX over no rows is NULL, which the column type hides
-                    latest = cast(
-                        "int | None",
-                        session.exec(
-                            select(func.max(Individual.time_of_death))
-                        ).one(),
-                    )
-                    if latest is None:
-                        msg = "Source database contains no individuals."
-                        raise ValueError(msg)
-                    restart_gen = latest
+            try:
+                with Session(source_engine) as session:
+                    if restart_gen is None:
+                        # MAX over no rows is NULL, which the column type hides
+                        latest = cast(
+                            "int | None",
+                            session.exec(
+                                select(func.max(Individual.time_of_death))
+                            ).one(),
+                        )
+                        if latest is None:
+                            msg = "Source database contains no individuals."
+                            raise ValueError(msg)
+                        restart_gen = latest
 
-                rows = list(
-                    session.exec(
-                        select(Individual)
-                        .where(Individual.time_of_birth <= restart_gen)
-                        .where(Individual.time_of_death >= restart_gen)
-                        .where(Individual.requires_eval == False)  # ruff: ignore[true-false-comparison]
-                    ).all()
-                )
+                    rows = list(
+                        session.exec(
+                            select(Individual)
+                            .where(Individual.time_of_birth <= restart_gen)
+                            .where(Individual.time_of_death >= restart_gen)
+                            .where(Individual.requires_eval == False)  # ruff: ignore[true-false-comparison]
+                        ).all()
+                    )
+            finally:
+                # Release the pooled connection; the engine is not used again
+                source_engine.dispose()
 
             if not rows:
                 msg = (

@@ -35,7 +35,7 @@ class Archive:
     --------
     >>> archive = Archive("__data__/run_1/database.db")
     >>> ind = archive.random_individual(birth_range=(0, 30))
-    >>> pop = archive.tournament_population(n=10, tournament_size=3)
+    >>> pop = archive.tournament_population(n=10, direction="max")
     >>> hall = archive.hall_of_fame(n=5, direction="min")
     """
 

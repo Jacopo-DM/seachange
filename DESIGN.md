@@ -41,6 +41,17 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 - `CHANGELOG.md` lists every change from `ariel.ec`, including goal 6's renames, as the migration note for ARIEL.
 - Acceptance: `uv build` makes a wheel and an sdist; an isolated temporary environment installs the wheel and runs the README example, which reaches fitness 20 (the README version prints the genotype; `examples/a1_one_max.py` prints `best fitness 20.0 of 20`); goal 3 passes; the README and `[project.urls]` carry the repository URL.
 
+### Goal 8: genotype-storage (proposed 2026-10-21, not approved)
+
+Why: a numpy array genotype cannot be stored today (assigning one crashes in the setter with numpy's "truth value of an array is ambiguous"; a list of `np.int64` is accepted and the save then fails with `StatementError ... int64 is not JSON serializable`), and a list of floats is stored as JSON text, which costs 0.52 s of a 0.57 s generation at 100 × 10,000 weights (PLAN.md Baseline). The user: a genotype that goes in as a numpy array should come back as one; every genotype is kept by default; the release waits for this.
+
+- A codec turns one kind of genotype into bytes and back. `GenotypeCodec` is a `Protocol` with `name: str`, `encode(genotype) -> bytes` and `decode(data: bytes) -> genotype`. seachange ships `json` (lists, dicts, strings and numbers, as today) and `numpy` (a short header with dtype and shape, then `array.tobytes()`; decoded with `np.frombuffer`). A PyTorch tensor needs a small user codec over `tensor.numpy()`; seachange does not depend on torch.
+- One codec per run, because every individual in a run shares one kind of genotype. Worked cycle: `ind.genotype = np.array([1.5, 2.5], dtype=np.float32)` keeps the array in memory; `EA` saves the codec's output (`float32`, shape `(2,)`, 8 bytes) in the `genotype_` column and writes `"numpy"` once in a `RunInfo` table; `EA.restart` or `Archive` reads `"numpy"`, picks that codec and returns a float32 array of shape `(2,)`.
+- A genotype is encoded when it is saved for the first time or reassigned, not at every generation's save, so unchanged genotypes cost nothing. In-place changes are not saved (see Open questions in PLAN.md).
+- Files written before goal 8 (by seachange 0.1 development or ARIEL) have no `RunInfo` table and JSON text in `genotype_`; they are read with the `json` codec.
+- Tags stay JSON: they are small labels, read and written by `Archive` filters.
+- Acceptance: PLAN.md goal 8's measure. Must not regress: every existing test, the one-max example (`best fitness 20.0 of 20`), loading a database written by today's code.
+
 ## Decisions
 
 - 2026-10-21: copy, not move. seachange starts as a copy of ARIEL's `ariel.ec` engine; ARIEL keeps its own and does not depend on seachange. Chosen by the user: nothing in ARIEL breaks. The cost is that the two copies drift.
@@ -74,6 +85,15 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 - Licence: relicensing under MIT or similar. It needs written consent from every copyright holder of ARIEL's code.
 - Moving this repo's two template differences (`pytest.ini`'s leak filter, `docs/conf.py`'s `sphinx.ext.todo`) into the shared templates in `~/Functions/_rsync/`. The user kept them in this project only (recorded in CLAUDE.md); in the templates, the leak filter would fail other projects that leak resources.
 - `Archive` draws: keeping SQLite's `ORDER BY random()` (it cannot be seeded, so `seed()` could not repeat a run), or loading every matching row and sampling in Python (loads whole archives). `_draw` reads only the ids in id order, samples them with `py_rng`, then loads the picked rows.
+
+- Genotype storage, measured 2026-10-21 (scratch scripts; plain `sqlite3`, 100 float32 genotypes of 10,000 weights, so without SQLAlchemy's own cost): JSON text writes in 0.33 s and reads in 0.19 s at 20.7 MB; raw bytes in the database 0.003 s and 0.002 s at 4.1 MB; one `.npy` file per genotype 0.006 s and 0.005 s at 4.0 MB. At 1,000,000 weights JSON took 37 s to write, raw bytes 0.25 s. Chosen for goal 8: raw bytes in the database.
+    - JSON text for arrays: rejected, about 100 times slower and 5 times larger than raw bytes, and it loses dtype and shape.
+    - `.npy` files beside the database: as fast as raw bytes, rejected because the folder and the database can drift apart (a deleted or uncopied file breaks a restart).
+    - Pickle: round-trips any object with no codec, rejected because only Python can read the file, existing databases would not load, and opening someone else's database can run code hidden in it.
+    - A type tag on every value, so one run can mix kinds of genotype: rejected, it costs every row for a case no run has.
+    - General compression of one genotype (10,000 float32, 40,000 bytes): zlib keeps 92.9% (1.2 ms), byte shuffle + zlib 88.7% (1.4 ms), lzma 92.5% (21 ms). Evolved weights look random, so it saves about 11% for a write about 30 times slower than raw bytes; rejected.
+    - float16: half the size in 0.04 ms, but it rounds every weight, so the stored network is not the one evaluated. Left for a later opt-in codec, never a default.
+    - A child stored as the XOR of its bits with its parent's, then zlib: 14.1% of raw when mutation changes 10% of the weights, 73.2% (with byte shuffle) when it nudges all of them. Deferred, not rejected: reading a genotype means rebuilding it from its ancestors, crossover children have two parents, and one bad row breaks every descendant.
 
 ## Results
 

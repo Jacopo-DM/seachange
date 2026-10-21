@@ -15,6 +15,7 @@ Order (approved 2026-10-21): 1 to 5 first, because they are small and fix or pin
 | 5 | close-connections | The engine and tests close every SQLite connection they open. | improvement, behaviour unchanged | Corrected and re-approved 2026-10-21: `pytest` with `-W error::ResourceWarning -W error::pytest.PytestUnraisableExceptionWarning` passes every test (now set in `pytest.ini`). The approved measure, `-W error::ResourceWarning` alone, passed even before the fix: a leak found during garbage collection reaches pytest as `PytestUnraisableExceptionWarning`. | done 2026-10-21 by T2 and T3 (dd77424, d621b85) | 2026-10-21 |
 | 6 | api-cleanup | Done 2026-10-21: audit T7 (ab86dd5) found 12 candidates; all approved and made as T12 to T23 (8a2f40c to b7e5902). Each change and its ARIEL migration step is a row in DESIGN.md Results, for the CHANGELOG (T9). | new behaviour | met: every approved change has tests and a migration line; rejected options are in DESIGN.md | done 2026-10-21 | 2026-10-21 |
 | 7 | release-0.1 | Done 2026-10-21: licence (T8), CHANGELOG (T9), build-and-install check (T10), repository URL (T11), plus T24 and T25 (a1bb034 to c6fac55). | new behaviour | met: `uv build` makes both archives; a throwaway environment installs the wheel and the one-max example prints `best fitness 20.0 of 20`; docs build with `-W`; no placeholders in the README; CHANGELOG lists every change | done 2026-10-21 | 2026-10-21 |
+| 8 | genotype-storage | A genotype comes back from the database as the type it went in (a numpy array keeps its dtype, shape and values), and large numeric genotypes are stored as raw bytes instead of JSON text. Spec in DESIGN.md. | new behaviour | (a) round-trip tests through `EA`, `EA.restart` and `Archive` for numpy arrays (Hypothesis over dtypes and shapes), JSON values (as today) and a user codec; (b) `tools/bench_genotypes.py` (100 individuals, 10,000 float32 weights, 20 generations, every parent replaced by a mutated child) measures genotype storage at most 0.05 s per generation, from 0.52 s, and a database of at most 90 MB, from 435 MB; (c) a database written by today's code still opens in `Archive` and `EA.restart` | proposed 2026-10-21, waiting for the user's approval | 2026-10-21 |
 
 After 0.1 (planned, not yet goals with measures): robot genotypes (ARIEL's tree, CPPN and NDE) moving here, a database backend other than SQLite, and ARIEL switching to seachange (work in the ARIEL repo). The switch pays off first: CHANGELOG.md is already written as its migration guide. Before it, ask the ARIEL session why 3 of ARIEL's 1451 tests did not pass on 2026-10-21 (it reported 1448 passing without the cause). Scope these with /zz-02-project-plan.
 
@@ -22,9 +23,9 @@ Non-goals until 0.1: robot genotypes, databases other than SQLite.
 
 ## Current state
 
-Phase: all seven goals done; 0.1.0 is ready to publish. A Python-standard compliance pass followed on 2026-10-21 (commits c24df65 to f78f2bd): 20 of its 21 checks met the standard; the one left, whether the settings should be frozen, was decided on 2026-10-21 (they are; DESIGN.md Decisions), so all 21 now meet it. Branch `compliance` is merged into `master` but not deleted (deleting needs the user's say-so). Nothing is uncommitted.
+Phase: goal 8 (genotype-storage) proposed on 2026-10-21; its spec and tasks wait for the user's approval, and the 0.1.0 release waits for goal 8 (user: the storage format should be settled before anyone has a 0.1 database). Goals 1 to 7 are done. A Python-standard compliance pass followed on 2026-10-21 (commits c24df65 to f78f2bd): 20 of its 21 checks met the standard; the one left, whether the settings should be frozen, was decided on 2026-10-21 (they are; DESIGN.md Decisions), so all 21 now meet it. Branch `compliance` is merged into `master` but not deleted (deleting needs the user's say-so). Nothing is uncommitted.
 
-Next steps are the user's, in this order: create github.com/Jacopo-DM/seachange (for example `gh repo create Jacopo-DM/seachange --public --source . --remote origin`), approve the push of `master` (Claude may run it only on that approval), then publish 0.1.0 with `uv build` and `uv publish` (the user publishes; Claude never does). Decisions waiting on the user, none blocking the release: the JSON aliases Known problem.
+Next step: the user reviews goal 8 (PLAN.md Goals and Tasks, DESIGN.md Specs) and answers its Open questions; no goal 8 code before that. After goal 8, the release steps are the user's, in this order: create github.com/Jacopo-DM/seachange (for example `gh repo create Jacopo-DM/seachange --public --source . --remote origin`), approve the push of `master` (Claude may run it only on that approval), then publish 0.1.0 with `uv build` and `uv publish` (the user publishes; Claude never does). Decisions waiting on the user, none blocking the release: the JSON aliases Known problem.
 
 ## Baseline
 
@@ -34,6 +35,7 @@ Goal measurements, 2026-10-21, Linux (host `johnny-dm`), Python 3.13, uv 0.13.1:
 
 - Goal 3: `uv run --no-sync sphinx-build -W --keep-going -b html docs docs/_build/html` fails, 1 error (`Unknown directive type "todo"`, `optimizers/revde.py` module docstring). Pass or fail, no noise. Fixed by T1.
 - Goal 4: no test runs `examples/`. Run by hand, `a1_one_max.py` takes 0.49 to 0.51 s (3 runs) and prints `best fitness 20.0 of 20`. After T4 the test runs it; with `num_steps=1` it fails (`best fitness 12.0 of 20`, checked once, then restored).
+- Goal 8, 2026-10-21, a scratch script (T26 makes it `tools/bench_genotypes.py`): 100 individuals of 10,000 float32 weights stored as lists, 20 generations, each replacing every parent by a mutated child. 0.570 s per generation, of which the mutation itself is about 0.05 s, so genotype storage is about 0.52 s; the database reaches 435 MB for 2,100 individuals (207 KB each, against 40 KB as raw float32). Projected to 1,000 generations: about 9 minutes of storage and 21 GB.
 - Goal 5: `uv run --no-sync pytest -q -p no:cacheprovider -W default` reports 73 warnings in 4 of 5 runs and 79 in 1 (median 73, range 73 to 79), all `ResourceWarning: unclosed database`. They come from three test files: `test_archive.py` (31 when run alone), `test_ea.py` (14) and `test_ea_restart.py` (11). The count varies with garbage-collection timing; the target is 0, so the noise does not matter. With `-W error::ResourceWarning` alone the suite still passed (83 warnings, checked after T2), so that flag does not measure this. After T3: 0 warnings in 3 runs, and the `pytest.ini` filter fails the suite when one leaking `create_engine` call is put back (checked once, then restored).
 
 ## Tasks
@@ -41,15 +43,30 @@ Goal measurements, 2026-10-21, Linux (host `johnny-dm`), Python 3.13, uv 0.13.1:
 Approved 2026-10-21. One task per commit.
 
 
+### Tier 1: goal 8, proposed 2026-10-21, not approved
+
+- T26 `tools/bench_genotypes.py`: the goal 8 benchmark (100 individuals of 10,000 float32 weights, 20 generations, mutate-all), printing seconds per generation for genotype storage and the database size. Run before T28 to confirm the 0.52 s and 435 MB baseline. Status: proposed.
+- T27 `seachange/codecs.py`: the `GenotypeCodec` protocol (`name`, `encode(genotype) -> bytes`, `decode(bytes) -> genotype`) and two codecs, `json` (today's values) and `numpy` (dtype and shape, then the raw bytes). Unit and Hypothesis tests. No change to `EA` yet. Status: proposed.
+- T28 Storage: `genotype_` becomes a bytes column; a `RunInfo` table holds the codec name and a format version; `EA(..., codec=...)` encodes each new or reassigned genotype when it saves and decodes on fetch. Status: proposed.
+- T29 `EA.restart` and `Archive` read the codec name from the file and use the matching codec (built in, or passed by the caller for a custom one); a database without a `RunInfo` table, as written by today's code or ARIEL's, is read with the `json` codec. Status: proposed.
+- T30 Typing of `Individual.genotype` and the crossover functions, per the user's answer (Open questions). Status: proposed.
+- T31 Docs and CHANGELOG: a docs page on codecs with a PyTorch codec as an example (no torch dependency), README note, CHANGELOG entries, and the ARIEL migration step. Status: proposed.
+- T32 Measure goal 8 with T26 and record it in DESIGN.md Results. Status: proposed.
+
 ### Tier 3: listed, not planned
 
 - Typing a `Sequence[int]` size (a numpy shape, which gives nested lists) correctly. No caller in this repo uses it, and goal 2 does not need it.
 - Porting fixes back to ARIEL's copy: done in the ARIEL repo on 2026-10-21 for goal 1 (T5), goal 2 (T6) and the restart engine disposal (T2), ARIEL commits 6d8797d, 462f7af and a29589b on its `main` (not pushed). The goal 6 interface changes are not ported; ARIEL takes them when it switches to seachange.
+- Smaller genotype storage, measured 2026-10-21 and left out of goal 8 (numbers in DESIGN.md Rejected approaches): storing a child as its difference from its parent (14% of the raw size when mutation touches 10% of the weights, 73% when it touches all of them), and an opt-in float16 codec (half the size, lossy).
 - Measuring `-W default` warnings in user runs, outside the tests. Goal 5's measure covers the tests only. Users close a run with `close()` or `with` (T16).
 
 ## Open questions
 
-None.
+Goal 8, asked 2026-10-21:
+
+- Should a run pick its codec by itself? With `EA(pop, ops)` and numpy genotypes, seachange would see the first genotype is an array and use the `numpy` codec, with `codec=` to override. The alternative: JSON unless the caller passes `codec=`, so a numpy run that forgets it fails at the first save.
+- How is `ind.genotype` typed? Today it is `JSONIterable`, so mypy knows a genotype is a list or dict. With numpy genotypes it becomes `JSONIterable | NDArray`, and code that indexes it has to say which. Making `Individual` generic (`Individual[NDArray[np.float32]]`) would keep exact types but fights SQLModel's table classes.
+- Changes made inside a genotype in place (`ind.genotype[0] += 1` on an array) are not saved, as with tags today (DESIGN.md Gotchas); only assignment is. Keep that rule, or re-encode every living genotype at every save (slower: it writes all of them each generation)?
 
 ## Known problems
 

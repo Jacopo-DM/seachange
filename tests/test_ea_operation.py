@@ -4,13 +4,13 @@ from pathlib import Path
 from typing import cast
 
 import pytest
+from pydantic import ValidationError
 
 from seachange import EAOperation, EASettings
 from seachange.population import Population
 from tests.ea_helpers import (
     CUSTOM_NUM_STEPS,
     DEFAULT_NUM_STEPS,
-    DEFAULT_POPULATION_SIZE,
     SIZE_AFTER_DOUBLING,
     SIZE_BEFORE_DOUBLING,
     double_pop,
@@ -31,7 +31,6 @@ def test_easettings_defaults() -> None:
     """EASettings initializes with expected defaults."""
     s = EASettings()
     assert s.num_steps == DEFAULT_NUM_STEPS
-    assert s.target_population_size == DEFAULT_POPULATION_SIZE
     assert s.db_file_name == "database.db"
     assert s.db_handling == "delete"
     assert s.is_maximisation is True
@@ -50,6 +49,12 @@ def test_easettings_override() -> None:
     s = EASettings(num_steps=CUSTOM_NUM_STEPS, quiet=True)
     assert s.num_steps == CUSTOM_NUM_STEPS
     assert s.quiet is True
+
+
+def test_easettings_has_no_target_population_size() -> None:
+    """The unused setting is gone, so setting it is an error."""
+    with pytest.raises(ValidationError, match="target_population_size"):
+        EASettings.model_validate({"target_population_size": 5})
 
 
 def test_easettings_ignores_unprefixed_environment(

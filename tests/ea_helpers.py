@@ -9,7 +9,6 @@ from seachange.individual import Individual
 from seachange.population import Population
 
 DEFAULT_NUM_STEPS = 100
-DEFAULT_POPULATION_SIZE = 100
 CUSTOM_NUM_STEPS = 50
 SIZE_BEFORE_DOUBLING = 3
 SIZE_AFTER_DOUBLING = 2 * SIZE_BEFORE_DOUBLING

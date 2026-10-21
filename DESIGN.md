@@ -76,6 +76,7 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 | 2026-10-21 | T5 | 1 | `EA.__init__` compares the resolved restart source and target database and raises `ValueError` if they match | 3 new tests failed before (delete mode overwrote the source; halt raised `FileExistsError`) and pass after; 191 tests pass |
 | 2026-10-21 | T6 | 2 | `@overload`s on `integers`, both `choice` methods, `uniform`, `normal` and `lognormal`; the float methods wrap numpy's result in `np.asarray` before `.tolist()` | before: 2 new tests failed at runtime and mypy found 10 errors in the new tests; after: 196 tests pass, mypy clean, `ty check` 3 diagnostics to 0; pyright not installed, so not run |
 | 2026-10-21 | T12 | 6 | `EASettings` and the generator settings read only `SEACHANGE_`-prefixed environment variables. For ARIEL: rename `NUM_STEPS` to `SEACHANGE_NUM_STEPS` and likewise for every settings variable | 3 new tests failed before (a bare `NUM_STEPS` changed `num_steps`) and pass after; 199 tests pass |
+| 2026-10-21 | T13 | 6 | `target_population_size` removed from `EASettings` and `EA`; nothing in seachange read it. For ARIEL: operators that read `config.target_population_size` must keep their own constant | new test failed before (the field existed) and passes after; 200 tests pass |
 
 ## Gotchas
 

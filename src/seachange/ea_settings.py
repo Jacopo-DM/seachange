@@ -33,9 +33,6 @@ class EASettings(BaseSettings):
     num_steps : int, optional
         Total number of generational steps ``EA.run`` will execute.
         Default is ``100``.
-    target_population_size : int, optional
-        Soft target used by survivor-selection operators to decide how many
-        individuals to retain each generation. Default is ``100``.
     output_folder : Path, optional
         Directory under which the database file is created. Created
         automatically if it does not exist. Default is
@@ -59,7 +56,6 @@ class EASettings(BaseSettings):
     is_maximisation: bool = True
     first_generation_id: int = 0
     num_steps: int = 100
-    target_population_size: int = 100
     output_folder: Path = Path.cwd() / "__data__"
     db_file_name: str = "database.db"
     db_handling: DBHandlingMode = "delete"

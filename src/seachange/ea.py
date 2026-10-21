@@ -191,7 +191,6 @@ class EA:
             if is_maximisation is not None
             else config.is_maximisation
         )
-        self.target_population_size: int = config.target_population_size
         self.current_generation: int = (
             first_generation_id
             if first_generation_id is not None

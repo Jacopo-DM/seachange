@@ -46,10 +46,10 @@ Approved 2026-10-21. One task per commit.
 ### Tier 1: goal 8, proposed 2026-10-21, not approved
 
 - T26 `tools/bench_genotypes.py`: the goal 8 benchmark (100 individuals of 10,000 float32 weights, 20 generations, mutate-all), printing seconds per generation for genotype storage and the database size. Run before T28 to confirm the 0.52 s and 435 MB baseline. Status: proposed.
-- T27 `seachange/codecs.py`: the `GenotypeCodec` protocol (`name`, `encode(genotype) -> bytes`, `decode(bytes) -> genotype`) and two codecs, `json` (today's values) and `numpy` (dtype and shape, then the raw bytes). Unit and Hypothesis tests. No change to `EA` yet. Status: proposed.
-- T28 Storage: `genotype_` becomes a bytes column; a `RunInfo` table holds the codec name and a format version; `EA(..., codec=...)` encodes each new or reassigned genotype when it saves and decodes on fetch. Status: proposed.
+- T27 `seachange/codecs.py`: the `GenotypeCodec` protocol (`name`, `handles(genotype) -> bool`, `encode(genotype) -> bytes`, `decode(bytes) -> genotype`), the list of automatic codecs with `register_codec`, and two codecs, `json` (today's values) and `numpy` (dtype and shape, then the raw bytes). Unit and Hypothesis tests. No change to `EA` yet. Status: proposed.
+- T28 Storage: `genotype_` becomes a bytes column; a `RunInfo` table holds the codec name and a format version; `EA` picks the codec from the first genotype (or takes `codec=`), encodes each genotype once, at its first save, and decodes on fetch; an assigned numpy genotype is marked read-only. Status: proposed.
 - T29 `EA.restart` and `Archive` read the codec name from the file and use the matching codec (built in, or passed by the caller for a custom one); a database without a `RunInfo` table, as written by today's code or ARIEL's, is read with the `json` codec. Status: proposed.
-- T30 Typing of `Individual.genotype` and the crossover functions, per the user's answer (Open questions). Status: proposed.
+- T30 Typing: `Individual` generic over its genotype type (`Individual[NDArray[np.float32]]`), so mypy knows `ind.genotype` exactly; the crossover functions follow. If SQLModel's table classes cannot take it cleanly, stop and ask the user. Status: proposed.
 - T31 Docs and CHANGELOG: a docs page on codecs with a PyTorch codec as an example (no torch dependency), README note, CHANGELOG entries, and the ARIEL migration step. Status: proposed.
 - T32 Measure goal 8 with T26 and record it in DESIGN.md Results. Status: proposed.
 
@@ -62,11 +62,7 @@ Approved 2026-10-21. One task per commit.
 
 ## Open questions
 
-Goal 8, asked 2026-10-21:
-
-- Should a run pick its codec by itself? With `EA(pop, ops)` and numpy genotypes, seachange would see the first genotype is an array and use the `numpy` codec, with `codec=` to override. The alternative: JSON unless the caller passes `codec=`, so a numpy run that forgets it fails at the first save.
-- How is `ind.genotype` typed? Today it is `JSONIterable`, so mypy knows a genotype is a list or dict. With numpy genotypes it becomes `JSONIterable | NDArray`, and code that indexes it has to say which. Making `Individual` generic (`Individual[NDArray[np.float32]]`) would keep exact types but fights SQLModel's table classes.
-- Changes made inside a genotype in place (`ind.genotype[0] += 1` on an array) are not saved, as with tags today (DESIGN.md Gotchas); only assignment is. Keep that rule, or re-encode every living genotype at every save (slower: it writes all of them each generation)?
+None. Goal 8's three questions were answered on 2026-10-21 (DESIGN.md Specs, goal 8).
 
 ## Known problems
 

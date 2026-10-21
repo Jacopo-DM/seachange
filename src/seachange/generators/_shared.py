@@ -49,7 +49,8 @@ class _GeneratorSettings(BaseSettings):
 
     Each field can be overridden by an environment variable named
     ``SEACHANGE_`` plus the field name, for example
-    ``SEACHANGE_CHOICE_SHUFFLE=true``.
+    ``SEACHANGE_CHOICE_SHUFFLE=true``. Read-only: pass a value to the
+    generator call instead of assigning to ``settings``.
 
     Parameters
     ----------
@@ -64,7 +65,7 @@ class _GeneratorSettings(BaseSettings):
         by default. Default is ``False``.
     """
 
-    model_config = SettingsConfigDict(env_prefix="SEACHANGE_")
+    model_config = SettingsConfigDict(env_prefix="SEACHANGE_", frozen=True)
 
     integers_endpoint: bool = True
     choice_replace: bool = True

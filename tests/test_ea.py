@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from seachange import EA, EAOperation, config
 from seachange.individual import Individual
@@ -19,7 +20,7 @@ from tests.ea_helpers import (
     make_pop,
     noop,
 )
-from tests.misuse import untyped
+from tests.misuse import assign, untyped
 
 pytestmark = pytest.mark.usefixtures("dispose_engines")
 
@@ -239,6 +240,13 @@ def test_default_database_follows_the_working_directory(
     """The default path is decided when read, not when seachange loads."""
     monkeypatch.chdir(tmp_path)
     assert config.db_file_path == tmp_path / "__data__" / "database.db"
+
+
+def test_settings_are_read_only() -> None:
+    """Assigning to config raises; a run takes its value as an argument."""
+    with pytest.raises(ValidationError, match="frozen"):
+        assign(config, "direction", value="min")
+    assert config.direction == "max"
 
 
 def test_ea_writes_under_the_working_directory_at_creation(

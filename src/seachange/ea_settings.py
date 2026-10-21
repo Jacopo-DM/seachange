@@ -19,7 +19,9 @@ class EASettings(BaseSettings):
 
     Consumed by both ``EA`` and ``EAOperation``. Each field can be overridden
     by an environment variable named ``SEACHANGE_`` plus the field name, for
-    example ``SEACHANGE_NUM_STEPS=50``.
+    example ``SEACHANGE_NUM_STEPS=50``. The settings are read-only:
+    ``config.direction = "min"`` raises ``ValidationError``; pass
+    ``direction="min"`` to ``EA`` instead.
 
     Parameters
     ----------
@@ -52,7 +54,7 @@ class EASettings(BaseSettings):
         Default is ``"delete"``.
     """
 
-    model_config = SettingsConfigDict(env_prefix="SEACHANGE_")
+    model_config = SettingsConfigDict(env_prefix="SEACHANGE_", frozen=True)
 
     quiet: bool = False
     direction: Direction = "max"

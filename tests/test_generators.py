@@ -5,6 +5,7 @@ from collections.abc import Callable
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
+from pydantic import ValidationError
 
 from seachange import seed
 from seachange.generators import (
@@ -14,6 +15,7 @@ from seachange.generators import (
     IntegersGenerator,
 )
 from seachange.generators._shared import settings  # ruff: ignore[import-private-name]  # tests the internal generator settings
+from tests.misuse import assign
 
 NUM_INTS = 5
 INT_HIGH = 10
@@ -340,6 +342,13 @@ def test_generator_settings_read_only_prefixed_environment(
     assert generator_settings().choice_shuffle is False
     monkeypatch.setenv("SEACHANGE_CHOICE_SHUFFLE", "true")
     assert generator_settings().choice_shuffle is True
+
+
+def test_generator_settings_are_read_only() -> None:
+    """Assigning to the generator settings raises."""
+    with pytest.raises(ValidationError, match="frozen"):
+        assign(settings, "choice_shuffle", value=True)
+    assert settings.choice_shuffle is False
 
 
 def test_seed_repeats_the_draws() -> None:

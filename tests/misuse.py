@@ -30,3 +30,18 @@ def untyped(func: object) -> AnyCall:
         The same object.
     """
     return cast("AnyCall", func)
+
+
+def assign(target: object, name: str, *, value: object) -> None:
+    """Set ``target.<name> = value``, past a type checker that forbids it.
+
+    Parameters
+    ----------
+    target : object
+        The object whose attribute is set.
+    name : str
+        The attribute name.
+    value : object
+        The value to assign.
+    """
+    setattr(target, name, value)

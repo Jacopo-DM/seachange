@@ -151,10 +151,10 @@ def test_restart_onto_its_own_default_file_raises(
     db_handling: DBHandlingMode,
 ) -> None:
     """Without db_file_path the default file is the source: refuse."""
-    source = _finished_run(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    run = _finished_run(tmp_path / "__data__")
+    source = run.rename(config.db_file_path)
     before = source.read_bytes()
-    monkeypatch.setattr(config, "output_folder", tmp_path)
-    monkeypatch.setattr(config, "db_file_name", source.name)
     with pytest.raises(ValueError, match="same file"):
         EA.restart(
             source,

@@ -22,9 +22,9 @@ Non-goals until 0.1: robot genotypes, databases other than SQLite.
 
 ## Current state
 
-Phase: all seven goals done; 0.1.0 is ready to publish. A Python-standard compliance pass followed on 2026-10-21 (commits c24df65 to f78f2bd): 20 of its 21 checks meet the standard; the one left is whether the settings should be frozen (Open questions). Branch `compliance` is merged into `master` but not deleted (deleting needs the user's say-so). Nothing is uncommitted.
+Phase: all seven goals done; 0.1.0 is ready to publish. A Python-standard compliance pass followed on 2026-10-21 (commits c24df65 to f78f2bd): 20 of its 21 checks met the standard; the one left, whether the settings should be frozen, was decided on 2026-10-21 (they are; DESIGN.md Decisions), so all 21 now meet it. Branch `compliance` is merged into `master` but not deleted (deleting needs the user's say-so). Nothing is uncommitted.
 
-Next steps are the user's, in this order: create github.com/Jacopo-DM/seachange (for example `gh repo create Jacopo-DM/seachange --public --source . --remote origin`), approve the push of `master` (Claude may run it only on that approval), then publish 0.1.0 with `uv build` and `uv publish` (the user publishes; Claude never does). Decisions waiting on the user, none blocking the release: the settings question below, and whether to fix the two Known problems.
+Next steps are the user's, in this order: create github.com/Jacopo-DM/seachange (for example `gh repo create Jacopo-DM/seachange --public --source . --remote origin`), approve the push of `master` (Claude may run it only on that approval), then publish 0.1.0 with `uv build` and `uv publish` (the user publishes; Claude never does). Decisions waiting on the user, none blocking the release: the JSON aliases Known problem.
 
 ## Baseline
 
@@ -49,7 +49,7 @@ Approved 2026-10-21. One task per commit.
 
 ## Open questions
 
-- Should `seachange.config` stay changeable at run time? Today `config.direction = "min"` changes every `EA` created afterwards; ARIEL's Ackley notebook uses this style (`config.is_maximisation = False`), and an ARIEL example comment shows it surprising someone. The Python standard wants settings read-only (`frozen=True`), which would make that line raise; the run would pass `direction="min"` to `EA` instead. Asked three times on 2026-10-21 without a clear answer; left as is, which changes nothing.
+None.
 
 ## Known problems
 

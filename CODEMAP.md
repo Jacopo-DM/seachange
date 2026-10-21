@@ -1,6 +1,6 @@
 # Code map
 
-Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the README example). `optimizers/revde.py` also runs as a script (`main()` prints a RevDE mutation). Generated paths are in the ignore list in CLAUDE.md.
+Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the README example); `examples/a2_revde.py` prints one RevDE mutation. Generated paths are in the ignore list in CLAUDE.md.
 
 ## `src/seachange/`
 
@@ -25,7 +25,7 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 
 ## `tests/`
 
-`test_<module>.py` for `archive`, `crossover`, `ea`, `ea_operation`, `individual`, `population` and `revde`; `test_ea_restart.py` covers restarting from a database, `test_examples.py` runs each example in a fresh interpreter, and `test_generators.py` the whole `generators/` package. `ea_settings` and `ea_database` have no test file of their own; the engine tests cover them. `conftest.py` sets the Hypothesis profile (derandomized when `CI` is set) and holds the `dispose_engines` fixture that `test_archive.py`, `test_ea.py` and `test_ea_restart.py` opt into; `ea_helpers.py` holds shared fixtures and operations, `misuse.py` lets tests pass badly typed input on purpose.
+`test_<module>.py` for `archive`, `crossover`, `ea`, `ea_operation`, `individual`, `population` and `revde`; `test_ea_restart.py` covers restarting from a database, `test_examples.py` runs each example in a fresh interpreter, `test_closing.py` checks that `close()` and `with` release connections (without the `dispose_engines` fixture), and `test_generators.py` the whole `generators/` package. `ea_settings` and `ea_database` have no test file of their own; the engine tests cover them. `conftest.py` sets the Hypothesis profile (derandomized when `CI` is set) and holds the `dispose_engines` fixture that `test_archive.py`, `test_ea.py` and `test_ea_restart.py` opt into; `ea_helpers.py` holds shared fixtures and operations, `misuse.py` lets tests pass badly typed input on purpose.
 
 ## `docs/`, `tools/`, `.github/`
 

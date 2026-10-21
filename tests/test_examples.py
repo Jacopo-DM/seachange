@@ -22,3 +22,22 @@ def test_one_max_finds_all_ones(tmp_path: Path) -> None:
     )
     assert "best fitness 20.0 of 20" in result.stdout
     assert (tmp_path / "__data__" / "database.db").exists()
+
+
+def test_revde_demo_prints_three_children(tmp_path: Path) -> None:
+    """The RevDE demo mutates three parents into three children."""
+    result = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]  # fixed argv, no outside input
+        [sys.executable, str(EXAMPLES / "a2_revde.py")],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert [line.split(":")[0] for line in result.stdout.splitlines()] == [
+        "parent 0",
+        "parent 1",
+        "parent 2",
+        "child 0",
+        "child 1",
+        "child 2",
+    ]

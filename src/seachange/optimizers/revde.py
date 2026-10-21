@@ -14,31 +14,12 @@ Todo
 
 """
 
-# Standard library
-from pathlib import Path
-
 # Third-party libraries
 import numpy as np
 import numpy.typing as npt
-from rich.console import Console
-from rich.traceback import install
 
 # Type Aliases
 ArrayGenotype = npt.NDArray[np.float64]
-
-# --- DATA SETUP --- #
-SCRIPT_NAME = __file__.split("/")[-1][:-3]
-CWD = Path.cwd()
-DATA = CWD / "__data__"
-DATA.mkdir(exist_ok=True)
-
-# --- RANDOM GENERATOR SETUP --- #
-SEED = 42
-RNG = np.random.default_rng(SEED)
-
-# --- TERMINAL OUTPUT SETUP --- #
-install(show_locals=False)
-console = Console()
 
 
 class RevDE:
@@ -92,24 +73,3 @@ class RevDE:
         out = self.r_matrix @ x_matrix
         y1, y2, y3 = out
         return [y1, y2, y3]
-
-
-def main() -> None:
-    """Entry point."""
-    parent_b = RNG.random(4)
-    parent_c = RNG.random(4)
-    parent_a = RNG.random(4)
-    revde = RevDE(scaling_factor=-0.5)
-    children = revde.mutate(parent_a, parent_b, parent_c)
-
-    # Display parents
-    for i, parent in enumerate([parent_a, parent_b, parent_c]):
-        console.log(f"Parent {i}: {parent}")
-
-    # Display children
-    for i, child in enumerate(children):
-        console.log(f"Child {i}: {child}")
-
-
-if __name__ == "__main__":
-    main()

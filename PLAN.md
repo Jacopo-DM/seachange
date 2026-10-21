@@ -75,7 +75,6 @@ Judged fine: `EAOperation`, `Individual` (fields and the `fitness` and `genotype
 
 Each task: tests first (watch them fail), then the change, a CHANGELOG note recorded in DESIGN.md Results for T9, and the README updated where it shows the old call. All areas have tests at 100% branch coverage. Ordered so tasks that touch the same file follow each other, and so the rename (T18) happens before `direction` becomes required (T19).
 
-- **T21 C7: RevDE without import side effects.** Files: `optimizers/revde.py`, new `examples/a2_revde.py` (the demo), `tests/test_revde.py`. `tests/test_examples.py` runs the new example. Test: importing `revde` in an empty folder creates nothing. Risk low. Cost: about 20 lines moved. Clears a Known problem.
 - **T22 C11: `tags =` replaces.** Files: `individual.py`, `tests/test_individual.py`, plus any merge in `src/` or `examples/` rewritten as `{**ind.tags, ...}`. Risk medium: callers in ARIEL that rely on the merge lose tags silently; the CHANGELOG line must say so plainly. Cost: 1 line changed, docstring rewritten.
 - **T23 C12: `EA.restart()`.** Files: `ea.py`, `tests/test_ea_restart.py`, `tests/test_ea.py`, README. `EA(population, operations, *, ...)` with both arguments required and no `None`; a new class method `EA.restart(source, operations, *, generation=None, ...)` with the same keywords as `EA` takes over the restart branch, including T5's same-file guard. The `(path, generation)` tuple and the "provide either population or restart" error go. Tests: every existing restart test rewritten to the new call, with the same assertions; `EA(None, ops)` is a mypy error. Risk medium: it moves about 40 lines of the constructor. Cost: one new public method, one removed argument. Last of goal 6, so T5 and T14 are settled first.
 
@@ -101,5 +100,4 @@ Each task: tests first (watch them fail), then the change, a CHANGELOG note reco
 
 - `src/seachange/ea.py` calls rich's `install()` at module level, so `import seachange` replaces the traceback printer for the user's whole program. Found 2026-10-21 during T16. It is the same side effect C7 removes from `revde.py`, but C7 was approved for RevDE only.
 
-- Importing `seachange.optimizers.revde` creates `__data__/` in the working directory (module-level `mkdir`), copied as is.
 - `uv-cr-lib`'s template `tools/run_notebooks.py` fails mypy until `nbclient`, `nbformat` and `ipykernel` are installed; they are in the dev group here.

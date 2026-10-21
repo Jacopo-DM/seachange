@@ -1,12 +1,12 @@
 """Test: RevDE optimizer."""
 
-import inspect
-import runpy
+import subprocess  # ruff: ignore[suspicious-subprocess-import]  # runs a fixed import check
+import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
 
-from seachange.optimizers import revde
 from seachange.optimizers.revde import RevDE
 
 NUM_CHILDREN = 3
@@ -83,11 +83,20 @@ def test_revde_reversibility() -> None:
         assert np.allclose(ch1, ch2)
 
 
-def test_revde_demo_logs_parents_and_children() -> None:
-    """The RevDE demo runs without error."""
-    revde.main()
+def test_importing_revde_changes_nothing(tmp_path: Path) -> None:
+    """Import creates no folder and leaves the traceback printer alone.
 
-
-def test_revde_script() -> None:
-    """Running revde.py as a script calls main()."""
-    runpy.run_path(inspect.getfile(revde), run_name="__main__")
+    A fresh interpreter in an empty folder imports seachange first, so
+    only what ``revde`` itself does on import is compared.
+    """
+    check = (
+        "import sys, seachange; hook = sys.excepthook; "
+        "import seachange.optimizers.revde; "
+        "assert sys.excepthook is hook, 'excepthook replaced'"
+    )
+    subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]  # fixed argv, no outside input
+        [sys.executable, "-c", check],
+        cwd=tmp_path,
+        check=True,
+    )
+    assert list(tmp_path.iterdir()) == []

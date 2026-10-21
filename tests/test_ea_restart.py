@@ -14,6 +14,8 @@ from tests.ea_helpers import (
     noop,
 )
 
+pytestmark = pytest.mark.usefixtures("dispose_engines")
+
 RESTART_STEPS = 3
 RESTART_GENERATION = 1
 
@@ -75,7 +77,9 @@ def test_restart_database_must_exist(tmp_path: Path) -> None:
 def test_restart_from_an_empty_database_fails(tmp_path: Path) -> None:
     """A database without individuals cannot be restarted from."""
     empty = tmp_path / "empty.db"
-    SQLModel.metadata.create_all(create_engine(f"sqlite:///{empty}"))
+    engine = create_engine(f"sqlite:///{empty}")
+    SQLModel.metadata.create_all(engine)
+    engine.dispose()
     with pytest.raises(ValueError, match="contains no individuals"):
         _restart(tmp_path, empty)
 

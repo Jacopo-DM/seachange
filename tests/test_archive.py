@@ -12,6 +12,8 @@ from seachange.archive import Archive, FitnessMode
 from seachange.individual import Individual
 from seachange.population import Population
 
+pytestmark = pytest.mark.usefixtures("dispose_engines")
+
 MIN_ARCHIVE_SIZE = 20
 LAST_GENERATION = 5
 FITNESS_LOW = 5.0

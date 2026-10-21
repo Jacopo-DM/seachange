@@ -30,8 +30,8 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 
 ### Goal 5: close-connections
 
-- `EA.__init__` disposes the engine it opens on a restart source. Tests dispose every `ea.engine` and `archive.engine` they create.
-- Acceptance: `pytest -W error::ResourceWarning` passes every test.
+- `EA.__init__` disposes the engine it opens on a restart source. The `dispose_engines` fixture in `tests/conftest.py` records every engine the package creates during a test and disposes them afterwards; test modules that build an `EA` or `Archive` opt in with `pytestmark`.
+- Acceptance: `pytest.ini` turns `ResourceWarning` and `pytest.PytestUnraisableExceptionWarning` into errors, and every test passes. (Corrected from `-W error::ResourceWarning` alone, which could not fail; see Gotchas.)
 - A public way for users to close a run (`close()` or a context manager) is a goal 6 candidate, not part of this goal.
 
 ### Goal 7: release-0.1
@@ -67,7 +67,10 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 |---|---|---|---|---|
 | 2026-10-21 | T1 | 3 | `docs/conf.py` loads `sphinx.ext.todo` | docs build with `-W`: 1 error before, 0 after (exit 0) |
 | 2026-10-21 | T2 | 5 | `EA.__init__` disposes the restart source engine, also on its error paths | `test_ea_restart.py` alone, `-W default`: 11 warnings before, 10 after; full suite 79 before, 77 after |
+| 2026-10-21 | T3 | 5 | `dispose_engines` fixture in `tests/conftest.py`, opted into by three test modules; one test disposes its own engine; `pytest.ini` fails on leaks | full suite: 77 warnings before, 0 after (3 runs); with the leak put back the suite fails |
 
 ## Gotchas
 
 - The dependency versions are newer than ARIEL's lock (numpy 2.5.4, sqlalchemy 2.1.6, sqlmodel 0.0.48 against 2.3.3, 2.0.43, 0.0.27). numpy 2.5's stubs are what exposed the `size=None` bug in PLAN.md Known problems.
+- A SQLite connection that the garbage collector closes raises its `ResourceWarning` inside `__del__`, where pytest catches it as an unraisable exception and reports `PytestUnraisableExceptionWarning`. So `-W error::ResourceWarning` alone never fails a test for a leak; `pytest.ini` turns both into errors. The failure is reported on whichever test is running when the collector runs, often the test after the leaking one.
+- ruff bans `autouse=True` fixtures (`pytest-fixture-autouse`). Shared setup is opted into per module with `pytestmark = pytest.mark.usefixtures(...)`.

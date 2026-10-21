@@ -18,6 +18,8 @@ from tests.ea_helpers import (
     noop,
 )
 
+pytestmark = pytest.mark.usefixtures("dispose_engines")
+
 
 def test_ea_initializes(tmp_path: Path) -> None:
     """EA initializes without error given population and ops."""

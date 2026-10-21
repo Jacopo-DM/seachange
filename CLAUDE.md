@@ -33,6 +33,8 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 | Build | `uv build --offline` | passes, <1 s; writes the wheel and sdist to `dist/` (wheel: the package, `py.typed`, `LICENSE`) |
 | Clean install | `uv run --isolated --no-project --python 3.13 --with dist/seachange-0.1.0-py3-none-any.whl python -I examples/a1_one_max.py` | after Build; prints `best fitness 20.0 of 20`, ~1 s; imports seachange from a throwaway environment, not `src/`. Needs network to pypi.org: with `--offline` uv cannot resolve the dependencies |
 | Benchmark (goal 8) | `uv run --no-sync python tools/bench_genotypes.py` | ~38 s; prints storage seconds per generation and database MB for 3 runs of list and of numpy genotypes, and each median (2026-10-21 after T28: lists 0.506 s, 435 MB; numpy 0.015 s, 86 MB). Run nothing else meanwhile |
+| Secret scan | `gitleaks git --no-banner --redact .` | no leaks in 76 commits (2026-10-21); `gitleaks dir --no-banner --redact .` scans the working files. gitleaks is a global tool, installed on the Lenovo in `~/.local/bin` |
+| Vulnerable dependencies | `osv-scanner scan --lockfile uv.lock` | no issues in 113 packages (2026-10-21); sends the package list to osv.dev. Global tool, installed on the Lenovo |
 | Pre-commit | `uv run --no-sync pre-commit run --all-files` | passes, <1 s; image and notebook hooks skip (no files) |
 
 ## Code rules

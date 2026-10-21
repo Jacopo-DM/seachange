@@ -2,11 +2,27 @@
 
 ## Goals
 
-No goals yet: run /zz-02-project-plan.
+Users: researchers who install seachange from PyPI, and later ARIEL itself, once ARIEL drops its own `ariel.ec` engine and imports seachange instead. The public interface may change before 0.1, but each change needs the user's approval.
+
+Order: 1 to 5 first, because they are small and fix or pin behaviour that the API cleanup (6) would otherwise have to carry along. 1 and 6 both touch `ea.py`. 7 comes last, because it checks the result of all the others.
+
+| # | Name | Goal | Kind | Success measure | Status | Added |
+|---|---|---|---|---|---|---|
+| 1 | restart-guard | A restart whose new database file would be its own source raises an error instead of deleting the source. | new behaviour | A test calls `EA(None, ops, restart=X)` where the default `db_file_path` is also `X`: it raises `ValueError` naming the path, and the file's bytes are unchanged afterwards. The existing restart tests, which use a separate `db_file_path`, pass unchanged. | draft | 2026-10-21 |
+| 2 | floats-size-none | `FloatsGenerator.uniform`, `normal` and `lognormal` with `size=None` return one plain `float`, as numpy does. | new behaviour | Hypothesis tests show each of the three returns a `float` for `size=None` and a list of the requested length otherwise. The three `known bug` ignores are gone and `ty check` reports 0 diagnostics. | draft | 2026-10-21 |
+| 3 | docs-build | The Sphinx docs build with warnings treated as errors. | improvement, behaviour unchanged | The command in `docs.yml` (`sphinx-build -W --keep-going -b html docs docs/_build/html`) exits 0. | draft | 2026-10-21 |
+| 4 | examples-tested | Every file in `examples/` runs under pytest, so a change that breaks the README example fails the suite. | improvement, behaviour unchanged | A test runs each example in a temporary folder. `a1_one_max.py` prints `best fitness 20.0 of 20`. The `a0_hello_world.py` stub is either given a real body or deleted (decided at the task list). Coverage stays at 100%. | draft | 2026-10-21 |
+| 5 | close-connections | The engine and tests close every SQLite connection they open. | improvement, behaviour unchanged | `pytest -W error::ResourceWarning` passes with all 187 tests (today 79 warnings). | draft | 2026-10-21 |
+| 6 | api-cleanup | The public interface is reviewed before 0.1, and each change the user approves is made and recorded for ARIEL's later switch. | new behaviour | Claude writes the candidate list (each with the call before and after, and why). Every approved change has a test and a line in a migration note that maps the `ariel.ec` name to the seachange name. Rejected candidates go to DESIGN.md. | draft | 2026-10-21 |
+| 7 | release-0.1 | seachange 0.1.0 is ready for the user to publish on PyPI. | new behaviour | `uv build` makes a wheel and an sdist. A fresh temporary environment installs the wheel and runs the README example, which prints `best fitness 20.0 of 20`. Goal 3 passes, the README has no placeholders, and a CHANGELOG lists the changes from `ariel.ec`. Blocked until the hosting question is answered. | draft | 2026-10-21 |
+
+After 0.1 (planned, not yet goals with measures): robot genotypes (ARIEL's tree, CPPN and NDE) moving here, a database backend other than SQLite, and ARIEL switching to seachange (work in the ARIEL repo).
+
+Non-goals until 0.1: robot genotypes, databases other than SQLite.
 
 ## Current state
 
-Phase: extracted. The engine, generators and optimizers are copied from ARIEL with their tests, all checks pass. Next step: decide the goals for the library (run /zz-02-project-plan).
+Phase: planning. The engine, generators and optimizers are copied from ARIEL with their tests. Seven goals are drafted. Next step: the user approves or changes the goals.
 
 ## Baseline
 
@@ -19,7 +35,8 @@ None yet.
 ## Open questions
 
 - The README was approved and merged on 2026-10-21. Its install step has a `<repository URL>` placeholder until a remote exists.
-- No remote exists. Where to host it (GitHub under `Jacopo-DM`?) is the user's call.
+- No remote exists. On 2026-10-21 the user deferred where to host it. Goal 7 (release-0.1) waits on the answer.
+- Goal order: is 1 to 5, then 6, then 7 right? Goals 1 and 6 both change `ea.py`.
 
 ## Known problems
 

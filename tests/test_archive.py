@@ -11,6 +11,7 @@ from seachange import EA, EAOperation
 from seachange.archive import Archive, FitnessMode
 from seachange.individual import Individual
 from seachange.population import Population
+from tests.misuse import untyped
 
 pytestmark = pytest.mark.usefixtures("dispose_engines")
 
@@ -430,6 +431,16 @@ def test_fitness_percentile_impossible_birth_range_empty(
         0.0, 100.0, birth_range=(9999, 9999)
     )
     assert len(pop) == 0
+
+
+def test_fitness_percentile_population_has_no_direction(
+    archive: Archive,
+) -> None:
+    """The band is the same either way, so the method takes no direction."""
+    with pytest.raises(TypeError, match="fitness_mode"):
+        untyped(archive.fitness_percentile_population)(
+            0.0, 100.0, fitness_mode="max"
+        )
 
 
 # ---------------------------------------------------------------------------

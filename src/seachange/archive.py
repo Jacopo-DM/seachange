@@ -396,7 +396,6 @@ class Archive:
         hi_pct: float = 75.0,
         n: int | None = None,
         *,
-        fitness_mode: FitnessMode = "min",  # ruff: ignore[unused-method-argument]
         birth_range: AgeRange = None,
     ) -> Population:
         """Return individuals whose fitness falls within a percentile band.
@@ -414,9 +413,6 @@ class Archive:
         n : int or None, optional
             If given, randomly sample ``n`` individuals from the band.
             When ``None`` all matching individuals are returned.
-        fitness_mode : {"min", "max"}, optional
-            Direction used when interpreting "best". Affects nothing
-            functionally in this method but kept for API consistency.
         birth_range : (int, int) or None, optional
 
         Returns

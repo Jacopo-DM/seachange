@@ -18,7 +18,7 @@ None yet.
 
 ## Open questions
 
-- The README draft (2026-10-21, branch `readme`) waits for the user's review. Its install step has a `<repository URL>` placeholder until a remote exists.
+- The README was approved and merged on 2026-10-21. Its install step has a `<repository URL>` placeholder until a remote exists.
 - No remote exists. Where to host it (GitHub under `Jacopo-DM`?) is the user's call.
 
 ## Known problems

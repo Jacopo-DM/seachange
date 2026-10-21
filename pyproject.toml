@@ -1,7 +1,7 @@
 [project]
 name = "seachange"
 version = "0.1.0"
-description = "Add your description here"
+description = "Generational evolutionary algorithm engine with a SQLite-backed population, extracted from ARIEL."
 readme = "README.md"
 authors = [
     { name = "jmdm", email = "jacopo.michele.dimatteo@gmail.com" }
@@ -10,7 +10,10 @@ requires-python = ">=3.13"
 dependencies = [
     "numpy>=2.5.4",
     "pydantic>=2.14.1",
+    "pydantic-settings>=2.10.1",
     "rich>=15.0.0",
+    "sqlalchemy>=2.0.43",
+    "sqlmodel>=0.0.25",
 ]
 
 [build-system]
@@ -20,7 +23,10 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "hypothesis>=6.170.5",
+    "ipykernel>=7.4.0",
     "mypy>=2.4.0",
+    "nbclient>=0.11.0",
+    "nbformat>=5.11.1",
     "pillow>=13.0.0",
     "pre-commit>=4.7.0",
     "pytest>=9.1.1",

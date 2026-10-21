@@ -41,7 +41,7 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 - `CHANGELOG.md` lists every change from `ariel.ec`, including goal 6's renames, as the migration note for ARIEL.
 - Acceptance: `uv build` makes a wheel and an sdist; an isolated temporary environment installs the wheel and runs the README example, which reaches fitness 20 (the README version prints the genotype; `examples/a1_one_max.py` prints `best fitness 20.0 of 20`); goal 3 passes; the README and `[project.urls]` carry the repository URL.
 
-### Goal 8: genotype-storage (proposed 2026-10-21, not approved)
+### Goal 8: genotype-storage (approved 2026-10-21)
 
 Why: a numpy array genotype cannot be stored today (assigning one crashes in the setter with numpy's "truth value of an array is ambiguous"; a list of `np.int64` is accepted and the save then fails with `StatementError ... int64 is not JSON serializable`), and a list of floats is stored as JSON text, which costs 0.52 s of a 0.57 s generation at 100 × 10,000 weights (PLAN.md Baseline). The user: a genotype that goes in as a numpy array should come back as one; every genotype is kept by default; the release waits for this.
 
@@ -130,6 +130,7 @@ Why: a numpy array genotype cannot be stored today (assigning one crashes in the
 | 2026-10-21 | compliance | 6 | `individual.check_rows` validates rows loaded from a file (`Individual.model_validate(row, from_attributes=True)`), called by `EA.restart`, `Archive._fetch_all` and `Archive._draw`; a run's own per-generation fetch is not checked, since it reads what it just wrote (user). For ARIEL: a database that loaded with bad values now raises `ValueError` naming the row | 3 new tests (text `fitness_`, text `genotype_`, restart) failed before and pass after; 224 tests pass |
 | 2026-10-21 | compliance | 6 | `EASettings` and `_GeneratorSettings` are `frozen=True`; assigning to `config` or `settings` raises `ValidationError`, and mypy's pydantic plugin flags it before it runs (user). For ARIEL: `config.is_maximisation = False` becomes `EA(..., direction="min")` | 2 new tests (assigning to each raises, the value stays) failed before and pass after; the one test that changed `config` now sets the working directory instead; 226 tests pass |
 | 2026-10-21 | known problem | 6 | `EA._commit` opens its session with `expire_on_commit=False`, so the individuals keep their values after the save; before, SQLAlchemy expired them on commit and the closed session could not reload them, so `ea.population[0].genotype` right after `EA(...)` raised `DetachedInstanceError` (user). For ARIEL: no call changes; a `fetch_population()` added only to work around it can go | 1 new test failed before and passes after; 227 tests pass |
+| 2026-10-21 | T26 | 8 | `tools/bench_genotypes.py`: 100 list genotypes of 10,000 float32 weights, 20 generations, each parent replaced by a mutated child; times every `step()` minus the mutation, 3 runs in a temporary folder | baseline confirmed: 0.530 s of storage per generation (runs 0.530, 0.530, 0.531), 435 MB; matches the scratch measurement (0.52 s, 435 MB) |
 
 ## Gotchas
 

@@ -2,13 +2,14 @@
 
 from pathlib import Path
 from types import TracebackType
-from typing import Self
+from typing import Self, cast
 
 import numpy as np
 from sqlalchemy import Engine, create_engine, func
 from sqlmodel import Session, col, select
 from sqlmodel.sql.expression import SelectOfScalar
 
+from seachange.codecs import Genotype
 from seachange.ea_settings import Direction
 from seachange.generators._shared import py_rng
 from seachange.individual import Individual, check_rows
@@ -52,13 +53,18 @@ class FitnessStats(Model):
     median: float
 
 
-class Archive:
+class Archive[G = Genotype]:
     """Read-only interface to a persisted EA database.
 
     Opens a SQLite database written by the EA engine and exposes targeted
     query methods for retrieving archived individuals. Particularly useful
     for injecting historically successful individuals back into a
     stagnating population.
+
+    ``G`` is the genotype type of the run, for type checkers:
+    ``Archive[NDArray[np.float32]](path)`` returns individuals whose
+    ``genotype`` is a float32 array. Plain ``Archive(path)`` means
+    ``Genotype``.
 
     Parameters
     ----------
@@ -145,16 +151,17 @@ class Archive:
 
     def _fetch_all(
         self, statement: SelectOfScalar[Individual]
-    ) -> list[Individual]:
+    ) -> list[Individual[G]]:
         with Session(self.engine) as session:
             rows = check_rows(session.exec(statement).all())
         for ind in rows:
             ind.id = None
-        return rows
+        # The run stored these rows, so their genotypes are of G
+        return cast("list[Individual[G]]", rows)
 
     def _draw(
         self, statement: SelectOfScalar[Individual], n: int
-    ) -> list[Individual]:
+    ) -> list[Individual[G]]:
         # Pick up to n matching rows with py_rng, so seed() repeats the draw.
         # Ids are read in a fixed order; only the picked rows are loaded.
         id_column = col(Individual.id)
@@ -177,7 +184,7 @@ class Archive:
         # As in _fetch_all: callers may add these to a new run as new rows
         for ind in drawn:
             ind.id = None
-        return drawn
+        return cast("list[Individual[G]]", drawn)
 
     # -- Single-individual queries ---------------------------------------------
 
@@ -188,7 +195,7 @@ class Archive:
         death_range: AgeRange = None,
         fitness_range: FitnessRange = None,
         only_dead: bool = False,
-    ) -> Individual:
+    ) -> Individual[G]:
         """Return a single uniformly-random archived individual.
 
         Parameters
@@ -230,7 +237,7 @@ class Archive:
         direction: Direction,
         birth_range: AgeRange = None,
         death_range: AgeRange = None,
-    ) -> Individual:
+    ) -> Individual[G]:
         """Return the single best individual in the archive.
 
         Parameters
@@ -278,7 +285,7 @@ class Archive:
         death_range: AgeRange = None,
         fitness_range: FitnessRange = None,
         only_dead: bool = False,
-    ) -> Population:
+    ) -> Population[G]:
         """Return a uniformly-random sample of up to ``n`` archived individuals.
 
         Parameters
@@ -311,7 +318,7 @@ class Archive:
         direction: Direction,
         birth_range: AgeRange = None,
         death_range: AgeRange = None,
-    ) -> Population:
+    ) -> Population[G]:
         """Return the all-time ``n`` best individuals from the archive.
 
         Parameters
@@ -349,7 +356,7 @@ class Archive:
         birth_range: AgeRange = None,
         death_range: AgeRange = None,
         pool_multiplier: int = 4,
-    ) -> Population:
+    ) -> Population[G]:
         """Select ``n`` individuals via repeated tournament selection.
 
         Fetches a candidate pool of ``n * pool_multiplier`` individuals from
@@ -402,7 +409,7 @@ class Archive:
             )
             raise AssertionError(msg)
 
-        def _key(ind: Individual) -> float:
+        def _key(ind: Individual[G]) -> float:
             return ind.fitness_ if ind.fitness_ is not None else float("inf")
 
         sample_size = min(tournament_size, len(pool_list))
@@ -418,7 +425,7 @@ class Archive:
             ]
         return Population(winners)
 
-    def by_generation(self, generation: int) -> Population:
+    def by_generation(self, generation: int) -> Population[G]:
         """Return all individuals present at a given generation.
 
         An individual was alive at ``generation`` if it was born at or
@@ -448,7 +455,7 @@ class Archive:
         n: int | None = None,
         *,
         birth_range: AgeRange = None,
-    ) -> Population:
+    ) -> Population[G]:
         """Return individuals whose fitness falls within a percentile band.
 
         Useful for sampling "mediocre-but-interesting" individuals rather
@@ -472,7 +479,7 @@ class Archive:
         """
         all_inds = self._fetch_all(self._base_query(birth_range=birth_range))
         if not all_inds:
-            return Population.empty()
+            return Population([])
 
         fitnesses = np.array([ind.fitness_ for ind in all_inds], dtype=float)
         lo_val = float(np.percentile(fitnesses, lo_pct))

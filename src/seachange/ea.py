@@ -16,6 +16,7 @@ from rich.progress import (
 from sqlalchemy import Engine, create_engine, func
 from sqlmodel import Session, col, or_, select
 
+from seachange.codecs import Genotype
 from seachange.ea_database import setup_database
 from seachange.ea_operation import Operation
 from seachange.ea_settings import DBHandlingMode, Direction, config
@@ -23,9 +24,13 @@ from seachange.individual import Individual, check_rows
 from seachange.population import Population
 
 
-class EA:
+class EA[G = Genotype]:
     """
     Generational evolutionary algorithm engine.
+
+    ``G`` is the genotype type of the run, for type checkers. It is read
+    from the population and operations, so ``EA(population, ops)`` with a
+    ``Population[NDArray[np.float32]]`` is an ``EA[NDArray[np.float32]]``.
 
     Each call to ``step()`` / ``run()`` executes the ordered list of
     ``EAOperation`` operations against the current population, then persists
@@ -81,8 +86,8 @@ class EA:
 
     def __init__(  # ruff: ignore[too-many-arguments]
         self,
-        population: Population,
-        operations: Sequence[Operation],
+        population: Population[G],
+        operations: Sequence[Operation[G]],
         *,
         num_steps: int | None = None,
         first_generation_id: int | None = None,
@@ -92,7 +97,7 @@ class EA:
         db_handling: DBHandlingMode | None = None,
     ) -> None:
         """Start a new run from ``population``."""
-        self.operations: Sequence[Operation] = operations
+        self.operations: Sequence[Operation[G]] = operations
         self.direction: Direction = (
             direction if direction is not None else config.direction
         )
@@ -112,15 +117,16 @@ class EA:
             db_handling=db_handling or config.db_handling,
             console=self.console,
         )
-        self.population: Population = population
+        self.population: Population[G] = population
         self._commit()
         self.console.rule("[blue]EA Initialized")
 
-    @classmethod
-    def restart(  # ruff: ignore[too-many-arguments]
-        cls,
+    # A static method with its own H: on the bare class, ty would fill a
+    # class method's G with its default instead of reading the operations
+    @staticmethod
+    def restart[H](  # ruff: ignore[too-many-arguments]
         source: Path | str,
-        operations: Sequence[Operation],
+        operations: Sequence[Operation[H]],
         *,
         generation: int | None = None,
         num_steps: int | None = None,
@@ -129,7 +135,7 @@ class EA:
         quiet: bool | None = None,
         db_file_path: Path | None = None,
         db_handling: DBHandlingMode | None = None,
-    ) -> Self:
+    ) -> "EA[H]":
         """Continue a recorded run in a new database.
 
         Reads the evaluated individuals that survived ``generation`` in
@@ -241,8 +247,9 @@ class EA:
             )
             for ind in rows
         ])
-        return cls(
-            population,
+        return EA(
+            # The rows hold what the recorded run stored, genotypes of H
+            cast("Population[H]", population),
             operations,
             num_steps=num_steps,
             first_generation_id=(
@@ -288,7 +295,7 @@ class EA:
         sort: Literal["asc", "desc"] | None = None,
         only_alive: bool = True,
         requires_eval: bool | None = None,
-    ) -> Population:
+    ) -> Population[G]:
         """Query individuals from the database and return them as a Population.
 
         Parameters
@@ -325,7 +332,9 @@ class EA:
             statement = statement.order_by(col(Individual.fitness_).asc())
 
         with Session(self.engine) as session:
-            return Population(list(session.exec(statement).all()))
+            rows = Population(list(session.exec(statement).all()))
+        # The run stored these rows, so their genotypes are of G
+        return cast("Population[G]", rows)
 
     def fetch_population(
         self,
@@ -371,7 +380,7 @@ class EA:
         mode: Literal["best", "median", "worst"] = "best",
         *,
         only_alive: bool = True,
-    ) -> Individual:
+    ) -> Individual[G]:
         """Return a single representative individual by fitness rank.
 
         The sort order follows ``self.direction``: descending for ``"max"``,
@@ -435,7 +444,7 @@ class EA:
         self.current_generation += 1
         self.fetch_population()
         for op in self.operations:
-            self.population = op(self.population)
+            self.population = op.run(self.population)
         self._commit()
 
     def run(self) -> None:

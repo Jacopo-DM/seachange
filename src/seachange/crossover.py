@@ -1,28 +1,35 @@
-"""Default crossover functions."""
+"""Default crossover functions.
+
+``one_point``, ``n_point`` and ``uniform`` take two lists or two numpy
+arrays. Arrays keep their dtype and shape, and the children are arrays;
+lists are worked on as ``float64`` and the children are nested lists.
+"""
 
 from collections.abc import Sequence
-from typing import cast
+from typing import TYPE_CHECKING, cast, overload
 
 import numpy as np
-from numpy.typing import NDArray
 
 from seachange.generators._shared import rng
 
-from .codecs import JSONIterable
+from .codecs import Array, Genotype, JSONIterable
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 def _validate_same_shape(
-    arr_i: NDArray[np.float64],
-    arr_j: NDArray[np.float64],
+    arr_i: Array,
+    arr_j: Array,
 ) -> None:
     """
     Assert that two arrays share the same shape.
 
     Parameters
     ----------
-    arr_i : NDArray[np.float64]
+    arr_i : Array
         First parent array.
-    arr_j : NDArray[np.float64]
+    arr_j : Array
         Second parent array.
 
     Raises
@@ -41,56 +48,65 @@ def _validate_same_shape(
 
 
 def _load(
-    parent_i: JSONIterable,
-    parent_j: JSONIterable,
-) -> tuple[tuple[int, ...], NDArray[np.float64], NDArray[np.float64]]:
+    parent_i: Genotype,
+    parent_j: Genotype,
+) -> tuple[tuple[int, ...], Array, Array]:
     """
     Convert two parent genotypes into flat NumPy arrays ready for crossover.
 
-    Both parents are cast to ``float64``, validated to share the same shape,
-    and returned as independent flat copies alongside the original shape so
-    results can be reshaped before being returned to the caller.
+    Two numpy arrays keep their dtype; anything else is cast to
+    ``float64``. Both are validated to share the same shape and returned as
+    independent flat copies alongside the original shape so results can be
+    reshaped before being returned to the caller.
 
     Parameters
     ----------
-    parent_i : JSONIterable
+    parent_i : Genotype
         First parent genotype.
-    parent_j : JSONIterable
+    parent_j : Genotype
         Second parent genotype.
 
     Returns
     -------
     shape : tuple[int, ...]
         The original shape of the parent arrays (used for repacking).
-    flat_i : NDArray[np.float64]
-        Flattened copy of ``parent_i`` cast to ``float64``.
-    flat_j : NDArray[np.float64]
-        Flattened copy of ``parent_j`` cast to ``float64``.
+    flat_i : Array
+        Flattened copy of ``parent_i``.
+    flat_j : Array
+        Flattened copy of ``parent_j``.
     """
-    arr_i = np.array(parent_i, dtype=float)
-    arr_j = np.array(parent_j, dtype=float)
+    if isinstance(parent_i, np.ndarray) and isinstance(parent_j, np.ndarray):
+        arr_i: Array = parent_i
+        arr_j: Array = parent_j
+    else:
+        arr_i = np.array(parent_i, dtype=float)
+        arr_j = np.array(parent_j, dtype=float)
     _validate_same_shape(arr_i, arr_j)
-    return arr_i.shape, arr_i.flatten().copy(), arr_j.flatten().copy()
+    return arr_i.shape, arr_i.flatten(), arr_j.flatten()
 
 
-def _pack(flat: NDArray[np.float64], shape: tuple[int, ...]) -> JSONIterable:
+def _pack(flat: Array, shape: tuple[int, ...], like: Genotype) -> Genotype:
     """Reshape to original shape.
 
-    Reshape a flat array back to the original genotype shape and convert to a
-    JSON-serialisable Python object.
+    Reshape a flat array back to the original genotype shape: an array when
+    the parent ``like`` is one, otherwise a JSON-serialisable Python object.
 
     Parameters
     ----------
-    flat : NDArray[np.float64]
+    flat : Array
         One-dimensional array to reshape.
     shape : tuple[int, ...]
         Target shape, as returned by ``_load``.
+    like : Genotype
+        A parent; its kind decides the kind of the child.
 
     Returns
     -------
-    JSONIterable
-        Nested Python list(s) with the original genotype shape.
+    Genotype
+        An array, or nested Python list(s), with the original shape.
     """
+    if isinstance(like, np.ndarray):
+        return flat.reshape(shape)
     return cast("JSONIterable", flat.reshape(shape).tolist())
 
 
@@ -99,11 +115,25 @@ class Crossover:
 
     # -- One-point -------------------------------------------------------------
 
+    @overload
     @staticmethod
-    def one_point(
+    def one_point[A: Array](  # pragma: no cover  # typing stub only
+        parent_i: A,
+        parent_j: A,
+    ) -> tuple[A, A]: ...
+
+    @overload
+    @staticmethod
+    def one_point(  # pragma: no cover  # typing stub only
         parent_i: JSONIterable,
         parent_j: JSONIterable,
-    ) -> tuple[JSONIterable, JSONIterable]:
+    ) -> tuple[JSONIterable, JSONIterable]: ...
+
+    @staticmethod
+    def one_point(
+        parent_i: Genotype,
+        parent_j: Genotype,
+    ) -> tuple[Genotype, Genotype]:
         """
         Produce two offspring via single-point crossover.
 
@@ -113,17 +143,17 @@ class Crossover:
 
         Parameters
         ----------
-        parent_i : JSONIterable
+        parent_i : JSONIterable or Array
             First parent genotype.
-        parent_j : JSONIterable
-            Second parent genotype.
+        parent_j : JSONIterable or Array
+            Second parent genotype, of the same kind and shape.
 
         Returns
         -------
-        child_i : JSONIterable
+        child_i : JSONIterable or Array
             Offspring inheriting the left segment from ``parent_i`` and the
             right segment from ``parent_j``.
-        child_j : JSONIterable
+        child_j : JSONIterable or Array
             Offspring inheriting the left segment from ``parent_j`` and the
             right segment from ``parent_i``.
         """
@@ -132,16 +162,32 @@ class Crossover:
         c1, c2 = flat_i.copy(), flat_j.copy()
         c1[point:] = flat_j[point:]
         c2[point:] = flat_i[point:]
-        return _pack(c1, shape), _pack(c2, shape)
+        return _pack(c1, shape, parent_i), _pack(c2, shape, parent_j)
 
     # -- N-point ---------------------------------------------------------------
 
+    @overload
     @staticmethod
-    def n_point(
+    def n_point[A: Array](  # pragma: no cover  # typing stub only
+        parent_i: A,
+        parent_j: A,
+        n: int,
+    ) -> tuple[A, A]: ...
+
+    @overload
+    @staticmethod
+    def n_point(  # pragma: no cover  # typing stub only
         parent_i: JSONIterable,
         parent_j: JSONIterable,
         n: int,
-    ) -> tuple[JSONIterable, JSONIterable]:
+    ) -> tuple[JSONIterable, JSONIterable]: ...
+
+    @staticmethod
+    def n_point(
+        parent_i: Genotype,
+        parent_j: Genotype,
+        n: int,
+    ) -> tuple[Genotype, Genotype]:
         """
         Produce two offspring via n-point crossover.
 
@@ -151,18 +197,18 @@ class Crossover:
 
         Parameters
         ----------
-        parent_i : JSONIterable
+        parent_i : JSONIterable or Array
             First parent genotype.
-        parent_j : JSONIterable
-            Second parent genotype.
+        parent_j : JSONIterable or Array
+            Second parent genotype, of the same kind and shape.
         n : int
             Number of cut points. Must satisfy ``1 <= n < len(parent)``.
 
         Returns
         -------
-        child_i : JSONIterable
+        child_i : JSONIterable or Array
             First offspring produced by alternating segment exchange.
-        child_j : JSONIterable
+        child_j : JSONIterable or Array
             Second offspring produced by alternating segment exchange.
 
         Raises
@@ -196,16 +242,32 @@ class Crossover:
                 c1[lo:hi] = flat_j[lo:hi]
                 c2[lo:hi] = flat_i[lo:hi]
 
-        return _pack(c1, shape), _pack(c2, shape)
+        return _pack(c1, shape, parent_i), _pack(c2, shape, parent_j)
 
     # -- Uniform ---------------------------------------------------------------
 
+    @overload
     @staticmethod
-    def uniform(
+    def uniform[A: Array](  # pragma: no cover  # typing stub only
+        parent_i: A,
+        parent_j: A,
+        swap_probability: float = ...,
+    ) -> tuple[A, A]: ...
+
+    @overload
+    @staticmethod
+    def uniform(  # pragma: no cover  # typing stub only
         parent_i: JSONIterable,
         parent_j: JSONIterable,
+        swap_probability: float = ...,
+    ) -> tuple[JSONIterable, JSONIterable]: ...
+
+    @staticmethod
+    def uniform(
+        parent_i: Genotype,
+        parent_j: Genotype,
         swap_probability: float = 0.5,
-    ) -> tuple[JSONIterable, JSONIterable]:
+    ) -> tuple[Genotype, Genotype]:
         """
         Produce two offspring via uniform crossover.
 
@@ -215,19 +277,19 @@ class Crossover:
 
         Parameters
         ----------
-        parent_i : JSONIterable
+        parent_i : JSONIterable or Array
             First parent genotype.
-        parent_j : JSONIterable
-            Second parent genotype.
+        parent_j : JSONIterable or Array
+            Second parent genotype, of the same kind and shape.
         swap_probability : float, optional
             Per-gene probability of exchanging alleles between parents.
             Must be in ``[0.0, 1.0]``. Default is ``0.5``.
 
         Returns
         -------
-        child_i : JSONIterable
+        child_i : JSONIterable or Array
             First offspring after uniform gene exchange.
-        child_j : JSONIterable
+        child_j : JSONIterable or Array
             Second offspring after uniform gene exchange.
 
         Raises
@@ -248,7 +310,7 @@ class Crossover:
         c1[mask] = flat_j[mask]
         c2[mask] = flat_i[mask]
 
-        return _pack(c1, shape), _pack(c2, shape)
+        return _pack(c1, shape, parent_i), _pack(c2, shape, parent_j)
 
     # -- Order crossover (OX), for permutation representations ---------------
 

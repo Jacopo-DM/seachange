@@ -1,7 +1,7 @@
 """Individual: one row of the EA database."""
 
-from collections.abc import Sequence
-from typing import cast
+from collections.abc import Sequence, Sized
+from typing import Self, cast
 
 import numpy as np
 from pydantic import ValidationError
@@ -17,7 +17,7 @@ from seachange.codecs import (
 
 
 # Mutable on purpose: SQLAlchemy saves a table row by changing it
-class Individual(SQLModel, table=True):
+class Individual[G = Genotype](SQLModel, table=True):
     """
     A single candidate solution in an evolutionary algorithm.
 
@@ -25,6 +25,11 @@ class Individual(SQLModel, table=True):
     genotype, and tags, is accessed through properties that enforce
     consistency invariants (e.g. clearing ``requires_eval`` on fitness
     assignment).
+
+    ``G`` is the type of the genotype, for type checkers only:
+    ``Individual[NDArray[np.float32]]`` says ``ind.genotype`` is a float32
+    array. Plain ``Individual`` means ``Genotype``, a JSON list or dict or
+    a numpy array. At run time ``Individual[...]`` is ``Individual``.
 
     Parameters
     ----------
@@ -117,17 +122,34 @@ class Individual(SQLModel, table=True):
         self.requires_eval = False
         self.fitness_ = float(value)
 
+    # Typing only: Individual[X] stays Individual at run time. pydantic would
+    # build a subclass per X, and SQLModel a second "individual" table.
+    def __class_getitem__(cls, typevar_values: object) -> type[Self]:
+        """Return the class itself for ``Individual[...]``.
+
+        Parameters
+        ----------
+        typevar_values : object
+            The genotype type, read by type checkers only.
+
+        Returns
+        -------
+        type
+            ``Individual``.
+        """
+        return cls
+
     # -- Genotype property -----------------------------------------------------
 
     @property
-    def genotype(self) -> Genotype:
+    def genotype(self) -> G:
         """Genotype of the individual.
 
         Returns
         -------
-        Genotype
-            The genotype as assigned: a list or dict of JSON values, or a
-            read-only numpy array.
+        G
+            The genotype as assigned: by default a list or dict of JSON
+            values, or a read-only numpy array.
 
         Raises
         ------
@@ -143,10 +165,10 @@ class Individual(SQLModel, table=True):
             msg = f"genotype of row {self.id} cannot be decoded: {error}"
             raise ValueError(msg)
         # genotype_ holds what the setter or a codec put there
-        return cast("Genotype", self.genotype_)
+        return cast("G", self.genotype_)
 
     @genotype.setter
-    def genotype(self, value: Genotype) -> None:
+    def genotype(self, value: G) -> None:
         """Assign the genotype and update the initialisation flag.
 
         Sets ``requires_init`` to ``False`` when ``value`` is non-empty,
@@ -156,15 +178,15 @@ class Individual(SQLModel, table=True):
 
         Parameters
         ----------
-        value : Genotype
-            The genotype to assign: a list or dict of JSON values, or a
-            numpy array.
+        value : G
+            The genotype to assign: by default a list or dict of JSON
+            values, or a numpy array; any type a registered codec handles.
         """
         if isinstance(value, np.ndarray):
             value.flags.writeable = False
             self.requires_init = value.size == 0
         else:
-            self.requires_init = len(value) == 0
+            self.requires_init = isinstance(value, Sized) and len(value) == 0
         self.genotype_ = value
 
     # -- Tags property ---------------------------------------------------------

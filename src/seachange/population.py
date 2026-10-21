@@ -9,11 +9,12 @@ from seachange.generators._shared import py_rng
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
+    from seachange.codecs import Genotype
     from seachange.ea_settings import Direction
     from seachange.individual import Individual
 
 
-def _safe_attr(individual: Individual, attribute: str) -> float:
+def _safe_attr(individual: object, attribute: str) -> float:
     """Safely retrieve a numeric attribute from an individual.
 
     Attempts to read ``attribute`` from ``individual`` and cast it to
@@ -23,7 +24,7 @@ def _safe_attr(individual: Individual, attribute: str) -> float:
 
     Parameters
     ----------
-    individual : Individual
+    individual : object
         The individual to inspect.
     attribute : str
         Name of the attribute to retrieve (e.g. ``"fitness_"``).
@@ -41,13 +42,18 @@ def _safe_attr(individual: Individual, attribute: str) -> float:
         return float("-inf")
 
 
-class Population:  # ruff: ignore[too-many-public-methods]  # public signature or class shape kept as is; changing it changes the API
+class Population[G = Genotype]:  # ruff: ignore[too-many-public-methods]  # public signature or class shape kept as is; changing it changes the API
     """
     Ordered, mutable container of ``Individual`` objects.
 
     Supports a chainable query API modelled after NumPy / pandas idioms.
     All filter and sort methods return new ``Population`` instances -
     the original is never mutated.
+
+    ``G`` is the genotype type of its individuals, for type checkers:
+    ``Population[NDArray[np.float32]]`` holds
+    ``Individual[NDArray[np.float32]]``. Plain ``Population`` means
+    ``Genotype``.
 
     Parameters
     ----------
@@ -61,9 +67,9 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
     >>> population.alive.sample(50).best(direction="max", n=10)
     """
 
-    def __init__(self, individuals: list[Individual]) -> None:
+    def __init__(self, individuals: list[Individual[G]]) -> None:
         """Create a population from a list of individuals."""
-        self.population: list[Individual] = list(individuals)
+        self.population: list[Individual[G]] = list(individuals)
 
     # -- Core sequence protocol ------------------------------------------------
 
@@ -77,7 +83,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
         """
         return len(self.population)
 
-    def __iter__(self) -> Iterator[Individual]:
+    def __iter__(self) -> Iterator[Individual[G]]:
         """Iterate over individuals in insertion order.
 
         Returns
@@ -108,7 +114,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
         """
         return bool(self.population)
 
-    def __add__(self, other: Population) -> Population:
+    def __add__(self, other: Population[G]) -> Population[G]:
         """Concatenate two populations into a new one.
 
         Parameters
@@ -127,16 +133,16 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
     @overload
     def __getitem__(  # pragma: no cover  # typing stub, never runs
         self, index: int
-    ) -> Individual: ...
+    ) -> Individual[G]: ...
 
     @overload
     def __getitem__(  # pragma: no cover  # typing stub, never runs
         self, index: slice[int | None, int | None, int | None]
-    ) -> Population: ...
+    ) -> Population[G]: ...
 
     def __getitem__(
         self, index: int | slice[int | None, int | None, int | None]
-    ) -> Individual | Population:
+    ) -> Individual[G] | Population[G]:
         """Retrieve an individual or a slice of the population.
 
         Parameters
@@ -158,7 +164,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
 
     # -- Mutation helpers ------------------------------------------------------
 
-    def append(self, individual: Individual) -> None:
+    def append(self, individual: Individual[G]) -> None:
         """Append a single individual to the population in place.
 
         Parameters
@@ -168,7 +174,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
         """
         self.population.append(individual)
 
-    def extend(self, other: Population | list[Individual]) -> None:
+    def extend(self, other: Population[G] | list[Individual[G]]) -> None:
         """Extend the population in place with another population or list.
 
         Parameters
@@ -181,7 +187,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
             other.population if isinstance(other, Population) else other,
         )
 
-    def to_list(self) -> list[Individual]:
+    def to_list(self) -> list[Individual[G]]:
         """Return a plain Python list of the individuals.
 
         Returns
@@ -193,7 +199,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
 
     # -- Chainable query API ---------------------------------------------------
 
-    def sample(self, n: int) -> Population:
+    def sample(self, n: int) -> Population[G]:
         """Return a new population of up to ``n`` randomly drawn individuals.
 
         Sampling is performed without replacement. If ``n`` exceeds the
@@ -223,7 +229,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
         *,
         direction: Direction = "max",
         attribute: str = "fitness_",
-    ) -> Population:
+    ) -> Population[G]:
         """Return a new population sorted by `attribute`.
 
         Returns
@@ -233,7 +239,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
         """
         reverse: bool = direction == "max"
 
-        def key(ind: Individual) -> float:
+        def key(ind: Individual[G]) -> float:
             return _safe_attr(ind, attribute)
 
         return Population(sorted(self.population, key=key, reverse=reverse))
@@ -244,7 +250,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
         direction: Direction = "max",
         attribute: str = "fitness_",
         n: int = 1,
-    ) -> Population:
+    ) -> Population[G]:
         """Return the top ``n`` individuals sorted by a numeric attribute.
 
         Uses ``_safe_attr`` to retrieve values, so unevaluated individuals
@@ -277,12 +283,12 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
         """
         reverse: bool = direction == "max"
 
-        def key(ind: Individual) -> float:
+        def key(ind: Individual[G]) -> float:
             return _safe_attr(ind, attribute)
 
         return Population(sorted(self.population, key=key, reverse=reverse)[:n])
 
-    def shuffle(self) -> Population:
+    def shuffle(self) -> Population[G]:
         """Return a new population with individuals in a random order.
 
         The original population is not modified.
@@ -297,7 +303,9 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
         py_rng.shuffle(data)
         return Population(data)
 
-    def where(self, predicate: Callable[[Individual], bool]) -> Population:
+    def where(
+        self, predicate: Callable[[Individual[G]], bool]
+    ) -> Population[G]:
         """Query the current population.
 
         Return a new population containing only
@@ -325,7 +333,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
     # -- Convenience filter properties -----------------------------------------
 
     @property
-    def alive(self) -> Population:
+    def alive(self) -> Population[G]:
         """All individuals with ``alive=True``.
 
         Returns
@@ -336,7 +344,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
         return self.where(lambda ind: ind.alive)
 
     @property
-    def dead(self) -> Population:
+    def dead(self) -> Population[G]:
         """All individuals with ``alive=False``.
 
         Returns
@@ -347,7 +355,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
         return self.where(lambda ind: not ind.alive)
 
     @property
-    def unevaluated(self) -> Population:
+    def unevaluated(self) -> Population[G]:
         """All individuals where ``requires_eval=True``.
 
         Returns
@@ -358,7 +366,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
         return self.where(lambda ind: ind.requires_eval)
 
     @property
-    def evaluated(self) -> Population:
+    def evaluated(self) -> Population[G]:
         """All individuals where ``requires_eval=False``.
 
         Returns
@@ -384,7 +392,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
     # -- Constructors ----------------------------------------------------------
 
     @classmethod
-    def empty(cls) -> Population:
+    def empty(cls) -> Population[G]:
         """Construct an empty population.
 
         Returns

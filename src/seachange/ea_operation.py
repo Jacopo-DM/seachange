@@ -1,8 +1,9 @@
 """Operation protocol and the EAOperation step wrapper."""
 
 import inspect
-from typing import ParamSpec, Protocol, cast, overload
+from typing import ParamSpec, Protocol, cast, get_origin, overload
 
+from seachange.codecs import Genotype
 from seachange.population import Population
 
 P = ParamSpec("P")
@@ -11,41 +12,51 @@ P = ParamSpec("P")
 # -- Step wrapper --------------------------------------------------------------
 
 
-class Operation(Protocol):
+class Operation[G = Genotype](Protocol):
     """What the EA needs from an element of its pipeline.
 
     Every ``EAOperation``, whatever its bound arguments, fits this shape.
+    ``G`` is the genotype type of the populations it takes and returns.
+    The EA calls ``run``, a plain method: matching ``EAOperation``'s
+    overloaded ``__call__`` against a generic protocol makes mypy read the
+    population as a bound argument when operations are listed inline in
+    ``EA(...)``.
     """
 
     name: str
 
-    def __call__(  # pragma: no cover  # typing stub only
-        self, population: Population, /
-    ) -> Population:
+    def run(  # pragma: no cover  # typing stub only
+        self, population: Population[G], /
+    ) -> Population[G]:
         """Run on a population and return the next one."""
         ...
 
 
-class _PipelineFunction[**Q](Protocol):
+class _PipelineFunction[G, **Q](Protocol):
     """A named function that takes a Population first and returns one."""
 
     @property
     def __name__(self) -> str: ...  # pragma: no cover  # ruff: ignore[bad-dunder-method-name]  # mirrors the __name__ of functions and methods
 
     def __call__(  # pragma: no cover  # typing stub only
-        self, population: Population, /, *args: Q.args, **kwargs: Q.kwargs
-    ) -> Population: ...
+        self, population: Population[G], /, *args: Q.args, **kwargs: Q.kwargs
+    ) -> Population[G]: ...
 
 
-class _Factory[**Q](Protocol):
+class _Factory[G, **Q](Protocol):
     """EAOperation's constructor, with the bound arguments left unchecked."""
 
     def __call__(  # pragma: no cover  # typing stub only
-        self, func: _PipelineFunction[Q], /, *args: object, **kwargs: object
-    ) -> "EAOperation[Q]": ...
+        self, func: _PipelineFunction[G, Q], /, *args: object, **kwargs: object
+    ) -> "EAOperation[Q, G]": ...
 
 
-class EAOperation[**P]:
+def _is_population(annotation: object) -> bool:
+    # Population, or Population[X] (whose origin is Population)
+    return annotation is Population or get_origin(annotation) is Population
+
+
+class EAOperation[**P, G = Genotype]:
     """EAOperation class.
 
     Decorating a function with ``@EAOperation`` validates its signature and
@@ -56,9 +67,10 @@ class EAOperation[**P]:
 
     Parameters
     ----------
-    func : _PipelineFunction[P]
+    func : _PipelineFunction[G, P]
         The pipeline function to wrap. Its first argument must be annotated
-        as ``Population`` and its return type must be ``Population``.
+        as ``Population`` and its return type must be ``Population``;
+        ``Population[NDArray[np.float32]]`` counts, and sets ``G``.
     *args : P.args
         Positional configuration arguments bound at construction time.
     **kwargs : P.kwargs
@@ -92,7 +104,7 @@ class EAOperation[**P]:
 
     def __init__(
         self,
-        func: _PipelineFunction[P],
+        func: _PipelineFunction[G, P],
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> None:
@@ -115,7 +127,7 @@ class EAOperation[**P]:
                 raise TypeError(
                     msg,
                 )
-            if params[0].annotation is not Population:
+            if not _is_population(params[0].annotation):
                 annotation_name = getattr(
                     params[0].annotation,
                     "__name__",
@@ -129,7 +141,7 @@ class EAOperation[**P]:
                 raise TypeError(
                     msg,
                 )
-            if sig.return_annotation is not Population:
+            if not _is_population(sig.return_annotation):
                 return_name = getattr(
                     sig.return_annotation,
                     "__name__",
@@ -151,17 +163,17 @@ class EAOperation[**P]:
 
     @overload
     def __call__(  # type: ignore[overload-overlap]  # pragma: no cover  # a Population first runs the operation, as __call__ checks first
-        self, population: Population, /
-    ) -> Population: ...
+        self, population: Population[G], /
+    ) -> Population[G]: ...
 
     @overload
     def __call__(  # pragma: no cover  # typing stub only
         self, *args: P.args, **kwargs: P.kwargs
-    ) -> "EAOperation[P]": ...
+    ) -> "EAOperation[P, G]": ...
 
     def __call__(
         self, *args: object, **kwargs: object
-    ) -> "Population | EAOperation[P]":
+    ) -> "Population[G] | EAOperation[P, G]":
         """
         Either bind configuration arguments or execute against a population.
 
@@ -186,32 +198,49 @@ class EAOperation[**P]:
         EAOperation
             When called with configuration arguments, returning a new
             bound instance.
+        """
+        if args and isinstance(args[0], Population):
+            return self.run(args[0])
+
+        # The arguments to bind are whatever P accepts, which only the call
+        # site of the factory can check, so it is called untyped here
+        factory = cast("_Factory[G, P]", EAOperation)
+        return factory(self.func, *args, **kwargs)
+
+    def run(self, population: Population[G], /) -> Population[G]:
+        """Run the wrapped function on ``population`` with the bound arguments.
+
+        ``operation(population)`` does the same.
+
+        Parameters
+        ----------
+        population : Population[G]
+            The population to pass as the first argument.
+
+        Returns
+        -------
+        Population[G]
+            What the wrapped function returned.
 
         Raises
         ------
         TypeError
             If the wrapped function does not return a ``Population``.
         """
-        if args and isinstance(args[0], Population):
-            population = args[0]
-            # Checked at run time: a wrapped function may break its annotation
-            result = cast(
-                "object", self.func(population, *self.args, **self.kwargs)
+        # Checked at run time: a wrapped function may break its annotation
+        result = cast(
+            "object", self.func(population, *self.args, **self.kwargs)
+        )
+        if not isinstance(result, Population):
+            msg = (
+                f"'{self.func.__name__}' expected a Population as return "
+                f"value, got '{type(result).__name__}'."
             )
-            if not isinstance(result, Population):
-                msg = (
-                    f"'{self.func.__name__}' expected a Population as return "
-                    f"value, got '{type(result).__name__}'."
-                )
-                raise TypeError(
-                    msg,
-                )
-            return result
-
-        # The arguments to bind are whatever P accepts, which only the call
-        # site of the factory can check, so it is called untyped here
-        factory = cast("_Factory[P]", EAOperation)
-        return factory(self.func, *args, **kwargs)
+            raise TypeError(
+                msg,
+            )
+        # The wrapped function is typed to return Population[G]
+        return cast("Population[G]", result)
 
     def __repr__(self) -> str:
         """Return the function name with its bound keyword arguments.

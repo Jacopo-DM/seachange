@@ -351,19 +351,27 @@ class EA:
         -------
         Individual
             The selected individual.
+
+        Raises
+        ------
+        ValueError
+            If ``mode`` is not one of the three above.
         """
+        if mode not in {"best", "median", "worst"}:
+            msg = (
+                f"Unknown mode {mode!r}; expected 'best', 'median' or 'worst'."
+            )
+            raise ValueError(msg)
         # pop[0] must be the *best* individual: highest fitness first when
         # maximising, lowest fitness first when minimising.
         sort: Literal["asc", "desc"] = "desc" if self.is_maximisation else "asc"
         pop = self._fetch(sort=sort, only_alive=only_alive, requires_eval=False)
 
-        match mode:
-            case "best":
-                return pop[0]
-            case "median":
-                return pop[len(pop) // 2]
-            case "worst":
-                return pop[-1]
+        if mode == "best":
+            return pop[0]
+        if mode == "median":
+            return pop[len(pop) // 2]
+        return pop[-1]
 
     # -- Execution -------------------------------------------------------------
 

@@ -106,13 +106,12 @@ def test_unknown_db_handling_keeps_the_existing_file(tmp_path: Path) -> None:
     assert second.size == 2 * len(make_pop())
 
 
-def test_get_solution_with_an_unknown_mode_returns_nothing(
-    tmp_path: Path,
-) -> None:
-    """An unknown mode falls through every case."""
+def test_get_solution_with_an_unknown_mode_raises(tmp_path: Path) -> None:
+    """A typo in the mode fails at once and names the valid modes."""
     ea = make_ea(tmp_path)
-    mode = cast("Literal['best']", "unknown")
-    assert ea.get_solution(mode) is None
+    mode = cast("Literal['best']", "bset")
+    with pytest.raises(ValueError, match="'best', 'median' or 'worst'"):
+        ea.get_solution(mode)
 
 
 def test_fetch_population_can_include_dead_and_unevaluated(

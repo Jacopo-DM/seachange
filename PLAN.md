@@ -75,7 +75,6 @@ Judged fine: `EAOperation`, `Individual` (fields and the `fitness` and `genotype
 
 Each task: tests first (watch them fail), then the change, a CHANGELOG note recorded in DESIGN.md Results for T9, and the README updated where it shows the old call. All areas have tests at 100% branch coverage. Ordered so tasks that touch the same file follow each other, and so the rename (T18) happens before `direction` becomes required (T19).
 
-- **T15 C4: unknown `get_solution` mode raises.** Files: `ea.py`, `tests/test_ea_restart.py` (the test that pins `None` changes to expect `ValueError`). Risk low. Cost: 3 lines.
 - **T16 C5: `close()` and `with`.** Files: `ea.py`, `archive.py`, tests. `close()` disposes the engine; `__enter__` returns the object and `__exit__` calls `close()`. Tests: after `with`, the pool holds no connection and the `pytest.ini` filter stays green. Risk low. Cost: about 25 lines, 1 new idea for users.
 - **T17 C3: drop the ignored parameter.** Files: `archive.py`, tests. Risk low. Cost: 2 lines removed and one suppression gone.
 - **T18 C10: one direction word.** Files: `ea.py`, `ea_settings.py`, `population.py`, `archive.py`, `examples/a1_one_max.py`, README, tests (44 call sites). The user chose `direction: Literal["max", "min"]`, exported as `Direction`, replacing `is_maximisation`, `sort=` (on `Population`) and `fitness_mode=` (with its `FitnessMode` alias). Risk medium: wide but mechanical; mypy finds every missed caller. Cost: no new lines, many changed.

@@ -14,7 +14,7 @@ Order (approved 2026-10-21): 1 to 5 first, because they are small and fix or pin
 | 4 | examples-tested | Done 2026-10-21 by T4 (e424d6b): `tests/test_examples.py` runs `examples/a1_one_max.py` and checks `best fitness 20.0 of 20`; the empty `a0_hello_world.py` was deleted. | improvement, behaviour unchanged | met | done 2026-10-21 | 2026-10-21 |
 | 5 | close-connections | The engine and tests close every SQLite connection they open. | improvement, behaviour unchanged | Corrected and re-approved 2026-10-21: `pytest` with `-W error::ResourceWarning -W error::pytest.PytestUnraisableExceptionWarning` passes every test (now set in `pytest.ini`). The approved measure, `-W error::ResourceWarning` alone, passed even before the fix: a leak found during garbage collection reaches pytest as `PytestUnraisableExceptionWarning`. | done 2026-10-21 by T2 and T3 (dd77424, d621b85) | 2026-10-21 |
 | 6 | api-cleanup | Done 2026-10-21: audit T7 (ab86dd5) found 12 candidates; all approved and made as T12 to T23 (8a2f40c to b7e5902). Each change and its ARIEL migration step is a row in DESIGN.md Results, for the CHANGELOG (T9). | new behaviour | met: every approved change has tests and a migration line; rejected options are in DESIGN.md | done 2026-10-21 | 2026-10-21 |
-| 7 | release-0.1 | seachange 0.1.0 is ready for the user to publish on PyPI. | new behaviour | `uv build` makes a wheel and an sdist. A fresh temporary environment installs the wheel and runs the README example, which prints `best fitness 20.0 of 20`. Goal 3 passes, the README has no placeholders, and a CHANGELOG lists the changes from `ariel.ec`. Blocked until the hosting question is answered. | approved 2026-10-21 | 2026-10-21 |
+| 7 | release-0.1 | Done 2026-10-21: licence (T8), CHANGELOG (T9), build-and-install check (T10), repository URL (T11), plus T24 and T25 (a1bb034 to the T10 commit). | new behaviour | met: `uv build` makes both archives; a throwaway environment installs the wheel and the one-max example prints `best fitness 20.0 of 20`; docs build with `-W`; no placeholders in the README; CHANGELOG lists every change | done 2026-10-21 | 2026-10-21 |
 
 After 0.1 (planned, not yet goals with measures): robot genotypes (ARIEL's tree, CPPN and NDE) moving here, a database backend other than SQLite, and ARIEL switching to seachange (work in the ARIEL repo).
 
@@ -22,7 +22,7 @@ Non-goals until 0.1: robot genotypes, databases other than SQLite.
 
 ## Current state
 
-Phase: goals 1 to 6 done; goal 7 (release) in progress. T8 (licence) and T11 (repository URL) are done. Left: T10 build-and-install check. Next step: T10.
+Phase: all seven goals done; 0.1.0 is ready to publish. Next steps are the user's: create github.com/Jacopo-DM/seachange, push, then publish 0.1.0 to PyPI.
 
 ## Baseline
 
@@ -40,7 +40,6 @@ Approved 2026-10-21. One task per commit.
 
 ### Tier 2: goal 7
 
-- **T10 Build-and-install check** (goal 7). Files: `CLAUDE.md` (the commands). Run `uv build`, then `uv run --isolated --with dist/<wheel> python <README example>` in a temporary folder, and record the commands with their output. Risk low. Verify: it prints `best fitness 20.0 of 20`.
 
 ### Tier 3: listed, not planned
 

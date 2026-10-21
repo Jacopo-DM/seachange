@@ -39,7 +39,7 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 
 - Licence GPL-3.0-or-later, as ARIEL (copyright 2025 Jacopo Michele di Matteo and Ioannis Grigoriadis); `LICENSE` copied from ARIEL and `license = "GPL-3.0-or-later"` in `pyproject.toml`.
 - `CHANGELOG.md` lists every change from `ariel.ec`, including goal 6's renames, as the migration note for ARIEL.
-- Acceptance: `uv build` makes a wheel and an sdist; an isolated temporary environment installs the wheel and runs the README example, which prints `best fitness 20.0 of 20`; goal 3 passes; the README and `[project.urls]` carry the repository URL.
+- Acceptance: `uv build` makes a wheel and an sdist; an isolated temporary environment installs the wheel and runs the README example, which reaches fitness 20 (the README version prints the genotype; `examples/a1_one_max.py` prints `best fitness 20.0 of 20`); goal 3 passes; the README and `[project.urls]` carry the repository URL.
 
 ## Decisions
 
@@ -97,6 +97,7 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 | 2026-10-21 | T24 | 7 | `EA.restart` takes only the survivors of the chosen generation: recorded in it and either still present after it or never retired. Before, individuals retired during that generation came along. For ARIEL: a restart's starting population shrinks to the run's real size (one-max: 20, was 30) | 2 new test cases failed before (4 and 6 instead of 2 and 4) and pass after; the 10 existing restart tests pass unchanged; one-max restart checked by hand: 20; 216 tests pass |
 | 2026-10-21 | T25 | 7 | `seed(n)` also reseeds a private `random.Random` (`py_rng`) that `Population.sample`, `shuffle` and every `Archive` draw now use; `Archive.random_individual` and `random_population` pick from ids read in id order instead of SQLite's `random()`. Python's global `random` is untouched. For ARIEL: these draws give different values than before, and code that seeded the global `random` to repeat them should call `seed()` | `tests/test_seed.py`: 4 tests failed before (a two-run comparison, Population and Archive draws, global random untouched) and pass after, 3 runs in a row; 220 tests pass |
 | 2026-10-21 | T9 | 7 | `CHANGELOG.md`: one 0.1.0 entry listing every difference from `ariel.ec` (Added, Changed, Removed, Fixed), each behaviour change with the old call beside the new one | every Results row with a user-visible change has a line; the new calls it shows were run once in an empty folder and all worked |
+| 2026-10-21 | T10 | 7 | CLAUDE.md records the Build and Clean install commands; `dist/` joins the ignore list | `uv build --offline` <1 s, wheel 46.8 KB, sdist 41.2 KB; a throwaway environment (15 packages, only sqlalchemy downloaded) installs the wheel; the README example, run from a folder outside the repo, reaches fitness 20.0, and `examples/a1_one_max.py` prints `best fitness 20.0 of 20` |
 
 ## Gotchas
 
@@ -105,3 +106,5 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 - ruff bans `autouse=True` fixtures (`pytest-fixture-autouse`). Shared setup is opted into per module with `pytestmark = pytest.mark.usefixtures(...)`.
 - Changing an individual's `tags` (or `genotype`) dict in place, as in `ind.tags["k"] = 1`, is not saved: the JSON columns do not track changes inside the value, so only assignment reaches the database. Checked 2026-10-21 with a two-generation run: the in-place tag was gone in the archive, the assigned one was there.
 - `uv-cr-lib`'s template `tools/run_notebooks.py` fails mypy unless `nbclient`, `nbformat` and `ipykernel` are installed. They are in the dev group here, so `uv sync --all-groups` covers it.
+- `uv run --isolated --offline --with dist/<wheel>` fails to resolve seachange's dependencies even though their wheels are in uv's cache; it needs network to pypi.org for the index listings (checked 2026-10-21). `uv pip` would avoid the resolver, but the user's python-guard hook blocks it.
+- `uv_build`'s sdist contains a `pyproject.toml.orig` next to `pyproject.toml`; the repo has no such file.

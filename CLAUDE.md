@@ -28,6 +28,8 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 | Types (ty, advisory) | `uv run --locked ty check` | 0 diagnostics |
 | Tests | `uv run --no-sync pytest -q` | 220 passed, 100% branch coverage, ~3 s; no warnings; `pytest.ini` turns a leaked SQLite connection into a failure |
 | Docs | `uv run --no-sync sphinx-build -W --keep-going -b html docs docs/_build/html` | passes, ~2 s; same command as `docs.yml` |
+| Build | `uv build --offline` | passes, <1 s; writes the wheel and sdist to `dist/` (wheel: the package, `py.typed`, `LICENSE`) |
+| Clean install | `uv run --isolated --no-project --python 3.13 --with dist/seachange-0.1.0-py3-none-any.whl python -I examples/a1_one_max.py` | after Build; prints `best fitness 20.0 of 20`, ~1 s; imports seachange from a throwaway environment, not `src/`. Needs network to pypi.org: with `--offline` uv cannot resolve the dependencies |
 | Pre-commit | `uv run --no-sync pre-commit run --all-files` | passes, <1 s; image and notebook hooks skip (no files) |
 
 ## Code rules
@@ -52,3 +54,4 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 | `.venv/` | generated | `uv sync` |
 | `.coverage` | generated | `pytest` |
 | `docs/_build/` | generated | sphinx |
+| `dist/` | generated | `uv build` |

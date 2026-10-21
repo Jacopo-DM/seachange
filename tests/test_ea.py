@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from seachange import EA, EAOperation
+from seachange import EA, EAOperation, config
 from seachange.individual import Individual
 from seachange.population import Population
 from tests.ea_helpers import (
@@ -241,3 +241,22 @@ def test_ea_run_zero_steps(tmp_path: Path) -> None:
     ea = make_ea(tmp_path, num_steps=0)
     ea.run()
     assert ea.current_generation == 0
+
+
+def test_default_database_follows_the_working_directory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The default path is decided when read, not when seachange loads."""
+    monkeypatch.chdir(tmp_path)
+    assert config.db_file_path == tmp_path / "__data__" / "database.db"
+
+
+def test_ea_writes_under_the_working_directory_at_creation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An EA created after a chdir writes its run under the new folder."""
+    monkeypatch.chdir(tmp_path)
+    EA(population=make_pop(), operations=[noop], quiet=True)
+    assert (tmp_path / "__data__" / "database.db").exists()

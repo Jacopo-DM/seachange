@@ -25,7 +25,7 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 
 ### Goal 4: examples-tested
 
-- `tests/test_examples.py` runs each example in a fresh interpreter (`subprocess`, `sys.executable`) with a temporary folder as the working directory. Not `runpy`: inside the suite the shared generator's state depends on earlier tests, and `config.output_folder` is fixed to the working directory when `seachange` is imported, so an in-process run could vary and would write to the repo's `__data__/`.
+- `tests/test_examples.py` runs each example in a fresh interpreter (`subprocess`, `sys.executable`) with a temporary folder as the working directory. Not `runpy`: inside the suite the shared generator's state depends on earlier tests, so an in-process run could vary. (When T4 was written, `config.output_folder` was also fixed at import and an in-process run would have written to the repo's `__data__/`; T14 removed that.)
 - `examples/a0_hello_world.py`, the empty `uv-cr-lib` template, is deleted (user, 2026-10-21).
 - Acceptance: `a1_one_max.py` prints `best fitness 20.0 of 20` (deterministic: the generators use the fixed `SEED`). Coverage stays at 100%.
 
@@ -77,6 +77,7 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 | 2026-10-21 | T6 | 2 | `@overload`s on `integers`, both `choice` methods, `uniform`, `normal` and `lognormal`; the float methods wrap numpy's result in `np.asarray` before `.tolist()` | before: 2 new tests failed at runtime and mypy found 10 errors in the new tests; after: 196 tests pass, mypy clean, `ty check` 3 diagnostics to 0; pyright not installed, so not run |
 | 2026-10-21 | T12 | 6 | `EASettings` and the generator settings read only `SEACHANGE_`-prefixed environment variables. For ARIEL: rename `NUM_STEPS` to `SEACHANGE_NUM_STEPS` and likewise for every settings variable | 3 new tests failed before (a bare `NUM_STEPS` changed `num_steps`) and pass after; 199 tests pass |
 | 2026-10-21 | T13 | 6 | `target_population_size` removed from `EASettings` and `EA`; nothing in seachange read it. For ARIEL: operators that read `config.target_population_size` must keep their own constant | new test failed before (the field existed) and passes after; 200 tests pass |
+| 2026-10-21 | T14 | 6 | `EASettings.output_folder` defaults to the relative `Path("__data__")`, and `db_file_path` joins it onto `Path.cwd()` when read, so a run lands under the working directory at `EA(...)` time. For ARIEL: scripts that change directory after importing now write under the new folder; `config.output_folder` reads `__data__` (relative) instead of an absolute path | 2 new tests: the path test failed before (it pointed at the repo's `__data__/`) and both pass after; 202 tests pass. Moving the path into `EA`, as the task first planned, was not needed |
 
 ## Gotchas
 

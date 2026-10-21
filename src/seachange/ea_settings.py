@@ -35,8 +35,9 @@ class EASettings(BaseSettings):
         Default is ``100``.
     output_folder : Path, optional
         Directory under which the database file is created. Created
-        automatically if it does not exist. Default is
-        ``Path.cwd() / "__data__"``.
+        automatically if it does not exist. A relative path is taken from
+        the working directory at the time ``db_file_path`` is read, which
+        for a run is when the ``EA`` is created. Default is ``"__data__"``.
     db_file_name : str, optional
         File name of the SQLite database. Default is ``"database.db"``.
     db_handling : DBHandlingMode, optional
@@ -56,7 +57,7 @@ class EASettings(BaseSettings):
     is_maximisation: bool = True
     first_generation_id: int = 0
     num_steps: int = 100
-    output_folder: Path = Path.cwd() / "__data__"
+    output_folder: Path = Path("__data__")
     db_file_name: str = "database.db"
     db_handling: DBHandlingMode = "delete"
 
@@ -68,9 +69,10 @@ class EASettings(BaseSettings):
         Returns
         -------
         Path
-            ``output_folder / db_file_name``.
+            ``output_folder / db_file_name``, with a relative
+            ``output_folder`` taken from the current working directory.
         """
-        return self.output_folder / self.db_file_name
+        return Path.cwd() / self.output_folder / self.db_file_name
 
 
 config: EASettings = EASettings()

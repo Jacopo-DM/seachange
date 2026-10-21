@@ -53,11 +53,9 @@ Approved 2026-10-21. One task per commit.
 ## Open questions
 
 - Should `seed()` (T20) also make the other draws repeatable? `Population.sample` and `shuffle` and two `Archive` methods use Python's `random`; `Archive.random_individual` and `random_population` use SQLite's `random()`, which cannot be seeded. A run whose operators use them is not repeatable from `seed()` alone.
-- The README was approved and merged on 2026-10-21. Its install step has a `<repository URL>` placeholder until a remote exists.
-- No remote exists. On 2026-10-21 the user deferred where to host it. Goal 7 (release-0.1) waits on the answer.
+- No remote exists. On 2026-10-21 the user deferred where to host it. T11 waits on the answer: the README's install step keeps its `<repository URL>` placeholder and `pyproject.toml` has no `[project.urls]` until then.
 
 ## Known problems
 
 - A restart also takes the individuals retired during the chosen generation: `EA.restart` selects `time_of_birth <= g <= time_of_death`, and an individual marked dead in generation `g` still has `time_of_death == g`. On one-max (20 kept alive, 10 retired per generation) a restart from generation 50 starts with 30. Found 2026-10-21 while checking T23; the query is as copied from ARIEL. Not changed without the user's approval.
 
-- `uv-cr-lib`'s template `tools/run_notebooks.py` fails mypy until `nbclient`, `nbformat` and `ipykernel` are installed; they are in the dev group here.

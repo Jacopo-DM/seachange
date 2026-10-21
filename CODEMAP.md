@@ -1,6 +1,6 @@
 # Code map
 
-Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the README example). `optimizers/revde.py` also runs as a script (`main()` prints a RevDE mutation). Generated paths are in the ignore list in CLAUDE.md.
+Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the README example); `examples/a0_hello_world.py` is the empty `uv-cr-lib` template. `optimizers/revde.py` also runs as a script (`main()` prints a RevDE mutation). Generated paths are in the ignore list in CLAUDE.md.
 
 ## `src/seachange/`
 
@@ -25,4 +25,8 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 
 ## `tests/`
 
-One `test_<module>.py` per module above; `ea_helpers.py` holds shared fixtures and operations, `misuse.py` lets tests pass badly typed input on purpose.
+`test_<module>.py` for `archive`, `crossover`, `ea`, `ea_operation`, `individual`, `population` and `revde`; `test_ea_restart.py` covers restarting from a database and `test_generators.py` the whole `generators/` package. `ea_settings` and `ea_database` have no test file of their own; the engine tests cover them. `conftest.py` sets the Hypothesis profile (derandomized when `CI` is set), `ea_helpers.py` holds shared fixtures and operations, `misuse.py` lets tests pass badly typed input on purpose.
+
+## `docs/`, `tools/`, `.github/`
+
+`docs/` is the Sphinx site (`conf.py`, `index.md`, `reference.md`). `tools/compress_images.py` and `tools/run_notebooks.py` are the shared templates the pre-commit hooks run. `.github/workflows/ci.yml` runs format, lint, mypy and pytest; `docs.yml` builds the docs.

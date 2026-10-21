@@ -14,7 +14,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 from sqlalchemy import Engine, create_engine, func
-from sqlmodel import Session, col, select
+from sqlmodel import Session, col, or_, select
 
 from seachange.ea_database import setup_database
 from seachange.ea_operation import Operation
@@ -132,8 +132,9 @@ class EA:
     ) -> Self:
         """Continue a recorded run in a new database.
 
-        Reads the evaluated individuals alive at ``generation`` from
-        ``source`` and starts a new run with them. The other keywords are
+        Reads the evaluated individuals that survived ``generation`` in
+        ``source`` (born by then and not retired during or before it) and
+        starts a new run with them. The other keywords are
         those of ``EA``.
 
         Parameters
@@ -205,6 +206,14 @@ class EA:
                         select(Individual)
                         .where(Individual.time_of_birth <= generation)
                         .where(Individual.time_of_death >= generation)
+                        # Survivors only: those retired in this generation
+                        # keep time_of_death == generation but are not alive
+                        .where(
+                            or_(
+                                Individual.time_of_death > generation,
+                                col(Individual.alive),
+                            )
+                        )
                         .where(Individual.requires_eval == False)  # ruff: ignore[true-false-comparison]
                     ).all()
                 )

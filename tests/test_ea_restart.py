@@ -6,7 +6,7 @@ from typing import Literal, cast
 import pytest
 from sqlmodel import SQLModel, create_engine
 
-from seachange import EA, DBHandlingMode, config
+from seachange import EA, DBHandlingMode, EAOperation, Population, config
 from tests.ea_helpers import (
     FIRST_GENERATION_ID,
     make_ea,
@@ -18,6 +18,10 @@ pytestmark = pytest.mark.usefixtures("dispose_engines")
 
 RESTART_STEPS = 3
 RESTART_GENERATION = 1
+# retire_two over 2 generations: 6 start, 4 survive generation 1, 2 the end
+RETIRE_POP_SIZE = 6
+SURVIVORS_AFTER_FIRST = 4
+SURVIVORS_AT_END = 2
 
 
 def _finished_run(tmp_path: Path) -> Path:
@@ -177,3 +181,37 @@ def test_restart_onto_its_own_file_by_another_path_raises(
             quiet=True,
         )
     assert source.read_bytes() == before
+
+
+@EAOperation
+def retire_two(population: Population) -> Population:
+    # Mark the two lowest-fitness individuals dead each generation.
+    for individual in population.sort(direction="min")[:2]:
+        individual.alive = False
+    return population
+
+
+@pytest.mark.parametrize(
+    ("generation", "survivors"),
+    [(None, SURVIVORS_AT_END), (1, SURVIVORS_AFTER_FIRST)],
+)
+def test_restart_takes_only_the_survivors_of_the_generation(
+    tmp_path: Path, generation: int | None, survivors: int
+) -> None:
+    """Individuals retired during the chosen generation stay out."""
+    first = EA(
+        make_pop(RETIRE_POP_SIZE),
+        [retire_two],
+        db_file_path=tmp_path / "first.db",
+        num_steps=2,
+        quiet=True,
+    )
+    first.run()
+    ea = EA.restart(
+        tmp_path / "first.db",
+        [noop],
+        generation=generation,
+        db_file_path=tmp_path / "second.db",
+        quiet=True,
+    )
+    assert ea.size == survivors

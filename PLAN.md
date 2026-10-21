@@ -47,6 +47,7 @@ Approved 2026-10-21. One task per commit.
 
 ## Open questions
 
+- Should `seachange.config` stay changeable at run time? Today `config.direction = "min"` changes every `EA` created afterwards; ARIEL's Ackley notebook uses this style (`config.is_maximisation = False`), and an ARIEL example comment shows it surprising someone. The Python standard wants settings read-only (`frozen=True`), which would make that line raise; the run would pass `direction="min"` to `EA` instead. Asked three times on 2026-10-21 without a clear answer; left as is, which changes nothing.
 
 ## Known problems
 

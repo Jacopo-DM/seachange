@@ -7,6 +7,7 @@ from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 type DBHandlingMode = Literal["delete", "halt"]
+type Direction = Literal["max", "min"]
 
 
 # -- Settings ------------------------------------------------------------------
@@ -24,9 +25,9 @@ class EASettings(BaseSettings):
     ----------
     quiet : bool, optional
         Suppress Rich console output during the run. Default is ``False``.
-    is_maximisation : bool, optional
-        ``True`` for maximisation problems, ``False`` for minimisation.
-        Default is ``True``.
+    direction : {"max", "min"}, optional
+        ``"max"`` when higher fitness is better, ``"min"`` when lower is.
+        Default is ``"max"``.
     first_generation_id : int, optional
         Generation counter value assigned to the initial population.
         Default is ``0``.
@@ -54,7 +55,7 @@ class EASettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SEACHANGE_")
 
     quiet: bool = False
-    is_maximisation: bool = True
+    direction: Direction = "max"
     first_generation_id: int = 0
     num_steps: int = 100
     output_folder: Path = Path("__data__")

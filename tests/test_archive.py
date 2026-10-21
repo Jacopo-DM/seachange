@@ -7,8 +7,8 @@ from typing import cast
 import numpy as np
 import pytest
 
-from seachange import EA, EAOperation
-from seachange.archive import Archive, FitnessMode
+from seachange import EA, Direction, EAOperation
+from seachange.archive import Archive
 from seachange.individual import Individual
 from seachange.population import Population
 from tests.misuse import untyped
@@ -216,19 +216,19 @@ def test_random_individual_no_match_raises(archive: Archive) -> None:
 
 def test_best_individual_min_mode(archive: Archive) -> None:
     """best_individual('min') returns the individual with the lowest fitness."""
-    ind = archive.best_individual(fitness_mode="min")
+    ind = archive.best_individual(direction="min")
     assert ind.fitness_ == pytest.approx(0.0)
 
 
 def test_best_individual_max_mode(archive: Archive) -> None:
     """best_individual('max') returns the individual with highest fitness."""
-    ind = archive.best_individual(fitness_mode="max")
+    ind = archive.best_individual(direction="max")
     assert ind.fitness_ == pytest.approx(19.0)
 
 
 def test_best_individual_birth_range(archive: Archive) -> None:
     """best_individual respects birth_range."""
-    ind = archive.best_individual(fitness_mode="min", birth_range=(0, 0))
+    ind = archive.best_individual(direction="min", birth_range=(0, 0))
     assert ind.time_of_birth == 0
 
 
@@ -288,27 +288,27 @@ def test_hall_of_fame_size(archive: Archive) -> None:
 
 def test_hall_of_fame_min_sorted(archive: Archive) -> None:
     """hall_of_fame('min') is sorted ascending by fitness."""
-    hof = archive.hall_of_fame(n=5, fitness_mode="min")
+    hof = archive.hall_of_fame(n=5, direction="min")
     fitnesses = [_fitness(ind) for ind in hof]
     assert fitnesses == sorted(fitnesses)
 
 
 def test_hall_of_fame_max_sorted(archive: Archive) -> None:
     """hall_of_fame('max') is sorted descending by fitness."""
-    hof = archive.hall_of_fame(n=5, fitness_mode="max")
+    hof = archive.hall_of_fame(n=5, direction="max")
     fitnesses = [_fitness(ind) for ind in hof]
     assert fitnesses == sorted(fitnesses, reverse=True)
 
 
 def test_hall_of_fame_min_best_is_lowest(archive: Archive) -> None:
     """The first entry in a min hall of fame has the lowest fitness."""
-    hof = archive.hall_of_fame(n=3, fitness_mode="min")
+    hof = archive.hall_of_fame(n=3, direction="min")
     assert hof[0].fitness_ == pytest.approx(0.0)
 
 
 def test_hall_of_fame_max_best_is_highest(archive: Archive) -> None:
     """The first entry in a max hall of fame has the highest fitness."""
-    hof = archive.hall_of_fame(n=3, fitness_mode="max")
+    hof = archive.hall_of_fame(n=3, direction="max")
     assert hof[0].fitness_ == pytest.approx(19.0)
 
 
@@ -340,18 +340,14 @@ def test_tournament_population_min_winners_are_low_fitness(
     archive: Archive,
 ) -> None:
     """In min mode, tournament winners have low fitness."""
-    pop = archive.tournament_population(
-        n=5, tournament_size=3, fitness_mode="min"
-    )
+    pop = archive.tournament_population(n=5, tournament_size=3, direction="min")
     for ind in pop:
         assert _fitness(ind) <= MAX_WINNER_FITNESS
 
 
 def test_tournament_population_max_mode(archive: Archive) -> None:
     """In max mode, tournament winners have high fitness."""
-    pop = archive.tournament_population(
-        n=5, tournament_size=3, fitness_mode="max"
-    )
+    pop = archive.tournament_population(n=5, tournament_size=3, direction="max")
     for ind in pop:
         assert _fitness(ind) >= 0.0
 
@@ -409,7 +405,7 @@ def test_fitness_percentile_in_band(archive: Archive) -> None:
     pop = archive.fitness_percentile_population(0.0, 50.0)
     assert len(pop) > 0
     fitnesses = [_fitness(ind) for ind in pop]
-    everyone = archive.hall_of_fame(n=archive.size, fitness_mode="max")
+    everyone = archive.hall_of_fame(n=archive.size, direction="max")
     all_fitnesses = [_fitness(ind) for ind in everyone]
     lo = float(np.percentile(all_fitnesses, 0.0))
     hi = float(np.percentile(all_fitnesses, 50.0))
@@ -437,9 +433,9 @@ def test_fitness_percentile_population_has_no_direction(
     archive: Archive,
 ) -> None:
     """The band is the same either way, so the method takes no direction."""
-    with pytest.raises(TypeError, match="fitness_mode"):
+    with pytest.raises(TypeError, match="direction"):
         untyped(archive.fitness_percentile_population)(
-            0.0, 100.0, fitness_mode="max"
+            0.0, 100.0, direction="max"
         )
 
 
@@ -461,7 +457,7 @@ def test_best_individual_maximising(archive: Archive) -> None:
 
 def test_hall_of_fame_maximising(archive: Archive) -> None:
     """In max mode the hall of fame holds the highest fitnesses first."""
-    hof = archive.hall_of_fame(n=TOP_N, fitness_mode="max")
+    hof = archive.hall_of_fame(n=TOP_N, direction="max")
     fitnesses = [_fitness(ind) for ind in hof]
     assert fitnesses == sorted(fitnesses, reverse=True)
     assert fitnesses[0] == pytest.approx(BEST_FITNESS)
@@ -495,10 +491,10 @@ def test_tournament_of_an_empty_pool_fails(archive: Archive) -> None:
         archive.tournament_population(n=2, birth_range=NOBODY)
 
 
-def test_unknown_fitness_mode_leaves_the_order_to_the_database(
+def test_unknown_direction_leaves_the_order_to_the_database(
     archive: Archive,
 ) -> None:
     """A mode that is neither min nor max applies no ordering."""
-    mode = cast("FitnessMode", "unsorted")
+    mode = cast("Direction", "unsorted")
     assert isinstance(archive.best_individual(mode), Individual)
-    assert len(archive.hall_of_fame(n=TOP_N, fitness_mode=mode)) == TOP_N
+    assert len(archive.hall_of_fame(n=TOP_N, direction=mode)) == TOP_N

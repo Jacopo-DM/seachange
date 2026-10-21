@@ -152,7 +152,7 @@ def test_ea_solutions_ascend_when_minimising(tmp_path: Path) -> None:
         operations=[noop],
         db_file_path=tmp_path / "test.db",
         quiet=True,
-        is_maximisation=False,
+        direction="min",
     )
     best, median, worst = _solution_fitnesses(ea)
     assert best <= median <= worst

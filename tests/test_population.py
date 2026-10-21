@@ -125,9 +125,9 @@ def test_population_best_returns_top_n() -> None:
 
 
 def test_population_best_min_sort() -> None:
-    """best(sort='min') returns the lowest-fitness individuals first."""
+    """best(direction='min') returns the lowest-fitness individuals first."""
     pop = Population([_make_ind(float(i)) for i in range(5)])
-    bottom2 = pop.best(sort="min", n=2)
+    bottom2 = pop.best(direction="min", n=2)
     first, second = bottom2[0].fitness_, bottom2[1].fitness_
     assert first is not None
     assert second is not None

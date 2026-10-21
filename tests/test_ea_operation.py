@@ -33,7 +33,7 @@ def test_easettings_defaults() -> None:
     assert s.num_steps == DEFAULT_NUM_STEPS
     assert s.db_file_name == "database.db"
     assert s.db_handling == "delete"
-    assert s.is_maximisation is True
+    assert s.direction == "max"
     assert s.first_generation_id == 0
     assert s.quiet is False
 

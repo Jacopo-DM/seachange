@@ -3,17 +3,17 @@
 import random
 from pathlib import Path
 from types import TracebackType
-from typing import Literal, Self
+from typing import Self
 
 import numpy as np
 from sqlalchemy import Engine, create_engine, func
 from sqlmodel import Session, col, select
 from sqlmodel.sql.expression import SelectOfScalar
 
+from seachange.ea_settings import Direction
 from seachange.individual import Individual
 from seachange.population import Population
 
-type FitnessMode = Literal["min", "max"]
 type AgeRange = tuple[int, int] | None
 type FitnessRange = tuple[float, float] | None
 
@@ -36,7 +36,7 @@ class Archive:
     >>> archive = Archive("__data__/run_1/database.db")
     >>> ind = archive.random_individual(birth_range=(0, 30))
     >>> pop = archive.tournament_population(n=10, tournament_size=3)
-    >>> hall = archive.hall_of_fame(n=5, fitness_mode="min")
+    >>> hall = archive.hall_of_fame(n=5, direction="min")
     """
 
     def __init__(self, db_path: Path | str) -> None:
@@ -170,7 +170,7 @@ class Archive:
 
     def best_individual(
         self,
-        fitness_mode: FitnessMode = "min",
+        direction: Direction = "min",
         *,
         birth_range: AgeRange = None,
         death_range: AgeRange = None,
@@ -179,7 +179,7 @@ class Archive:
 
         Parameters
         ----------
-        fitness_mode : {"min", "max"}, optional
+        direction : {"max", "min"}, optional
             ``"min"`` returns the lowest-fitness individual (minimisation);
             ``"max"`` returns the highest (maximisation). Default is ``"min"``.
         birth_range : (int, int) or None, optional
@@ -198,7 +198,7 @@ class Archive:
             birth_range=birth_range,
             death_range=death_range,
         )
-        match fitness_mode:
+        match direction:
             case "min":
                 statement = statement.order_by(col(Individual.fitness_).asc())
             case "max":
@@ -255,7 +255,7 @@ class Archive:
     def hall_of_fame(
         self,
         n: int = 10,
-        fitness_mode: FitnessMode = "min",
+        direction: Direction = "min",
         *,
         birth_range: AgeRange = None,
         death_range: AgeRange = None,
@@ -266,7 +266,7 @@ class Archive:
         ----------
         n : int, optional
             Size of the hall of fame. Default is ``10``.
-        fitness_mode : {"min", "max"}, optional
+        direction : {"max", "min"}, optional
             Optimisation direction. Default is ``"min"``.
         birth_range : (int, int) or None, optional
         death_range : (int, int) or None, optional
@@ -279,7 +279,7 @@ class Archive:
             birth_range=birth_range,
             death_range=death_range,
         )
-        match fitness_mode:
+        match direction:
             case "min":
                 statement = statement.order_by(col(Individual.fitness_).asc())
             case "max":
@@ -292,7 +292,7 @@ class Archive:
         self,
         n: int,
         tournament_size: int = 3,
-        fitness_mode: FitnessMode = "min",
+        direction: Direction = "min",
         *,
         birth_range: AgeRange = None,
         death_range: AgeRange = None,
@@ -311,7 +311,7 @@ class Archive:
             Number of tournament winners to return.
         tournament_size : int, optional
             Number of competitors drawn per tournament. Default is ``3``.
-        fitness_mode : {"min", "max"}, optional
+        direction : {"max", "min"}, optional
             ``"min"`` picks the lowest-fitness contestant as the winner
             (minimisation problem). ``"max"`` picks the highest. Default
             is ``"min"``.
@@ -355,7 +355,7 @@ class Archive:
             return ind.fitness_ if ind.fitness_ is not None else float("inf")
 
         sample_size = min(tournament_size, len(pool_list))
-        if fitness_mode == "min":
+        if direction == "min":
             winners = [
                 min(random.sample(pool_list, sample_size), key=_key)
                 for _ in range(n)

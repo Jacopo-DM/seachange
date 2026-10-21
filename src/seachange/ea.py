@@ -19,7 +19,7 @@ from sqlmodel import Session, col, select
 
 from seachange.ea_database import setup_database
 from seachange.ea_operation import Operation
-from seachange.ea_settings import DBHandlingMode, config
+from seachange.ea_settings import DBHandlingMode, Direction, config
 from seachange.individual import Individual
 from seachange.population import Population
 
@@ -52,10 +52,10 @@ class EA:
     first_generation_id : int or None, optional
         Starting value of the internal generation counter. Falls back to
         ``config.first_generation_id`` when ``None``. Default is ``None``.
-    is_maximisation : bool or None, optional
-        Whether higher fitness is better. Determines the ranking used by
-        ``get_solution``. Falls back to ``config.is_maximisation`` when
-        ``None``. Default is ``None``.
+    direction : {"max", "min"} or None, optional
+        ``"max"`` when higher fitness is better, ``"min"`` when lower is.
+        Determines the ranking used by ``get_solution``. Falls back to
+        ``config.direction`` when ``None``. Default is ``None``.
     quiet : bool or None, optional
         Suppress Rich console output. Falls back to ``config.quiet`` when
         ``None``. Default is ``None``.
@@ -92,7 +92,7 @@ class EA:
         restart: "tuple[Path | str, int] | Path | str | None" = None,
         num_steps: int | None = None,
         first_generation_id: int | None = None,
-        is_maximisation: bool | None = None,
+        direction: Direction | None = None,
         quiet: bool | None = None,
         db_file_path: Path | None = None,
         db_handling: DBHandlingMode | None = None,
@@ -187,10 +187,8 @@ class EA:
             raise ValueError(msg)
 
         self.operations: Sequence[Operation] = operations
-        self.is_maximisation: bool = (
-            is_maximisation
-            if is_maximisation is not None
-            else config.is_maximisation
+        self.direction: Direction = (
+            direction if direction is not None else config.direction
         )
         self.current_generation: int = (
             first_generation_id
@@ -327,8 +325,8 @@ class EA:
     ) -> Individual:
         """Return a single representative individual by fitness rank.
 
-        The sort direction is determined by ``self.is_maximisation``:
-        descending for maximisation problems, ascending for minimisation.
+        The sort order follows ``self.direction``: descending for ``"max"``,
+        ascending for ``"min"``.
         Only evaluated individuals (``requires_eval=False``) are considered.
 
         Parameters
@@ -365,7 +363,9 @@ class EA:
             raise ValueError(msg)
         # pop[0] must be the *best* individual: highest fitness first when
         # maximising, lowest fitness first when minimising.
-        sort: Literal["asc", "desc"] = "desc" if self.is_maximisation else "asc"
+        sort: Literal["asc", "desc"] = (
+            "desc" if self.direction == "max" else "asc"
+        )
         pop = self._fetch(sort=sort, only_alive=only_alive, requires_eval=False)
 
         if mode == "best":

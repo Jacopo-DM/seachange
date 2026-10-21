@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING, Literal, overload
+from typing import TYPE_CHECKING, overload
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
+    from seachange.ea_settings import Direction
     from seachange.individual import Individual
 
 
@@ -56,7 +57,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
 
     Examples
     --------
-    >>> population.alive.sample(50).best(sort="max", attribute="fitness", n=10)
+    >>> population.alive.sample(50).best(direction="max", n=10)
     """
 
     def __init__(self, individuals: list[Individual]) -> None:
@@ -219,7 +220,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
     def sort(
         self,
         *,
-        sort: Literal["max", "min"] = "max",
+        direction: Direction = "max",
         attribute: str = "fitness_",
     ) -> Population:
         """Return a new population sorted by `attribute`.
@@ -229,7 +230,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
         'Population'
             A new population in sorted order.
         """
-        reverse: bool = sort == "max"
+        reverse: bool = direction == "max"
 
         def key(ind: Individual) -> float:
             return _safe_attr(ind, attribute)
@@ -239,7 +240,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
     def best(
         self,
         *,
-        sort: Literal["max", "min"] = "max",
+        direction: Direction = "max",
         attribute: str = "fitness_",
         n: int = 1,
     ) -> Population:
@@ -247,11 +248,11 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
 
         Uses ``_safe_attr`` to retrieve values, so unevaluated individuals
         (with ``None`` or missing attributes) sort to the bottom regardless
-        of ``sort`` direction.
+        of ``direction``.
 
         Parameters
         ----------
-        sort : {"max", "min"}, optional
+        direction : {"max", "min"}, optional
             Sorting direction.
 
             ``"max"``
@@ -273,7 +274,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
             A new population containing the ``n`` highest- (or lowest-)
             ranked individuals.
         """
-        reverse: bool = sort == "max"
+        reverse: bool = direction == "max"
 
         def key(ind: Individual) -> float:
             return _safe_attr(ind, attribute)

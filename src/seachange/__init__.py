@@ -4,7 +4,7 @@ from seachange.archive import Archive
 from seachange.crossover import Crossover
 from seachange.ea import EA
 from seachange.ea_operation import EAOperation
-from seachange.ea_settings import DBHandlingMode, EASettings, config
+from seachange.ea_settings import DBHandlingMode, Direction, EASettings, config
 from seachange.generators import (
     SEED,
     FloatMutator,
@@ -32,6 +32,7 @@ __all__: list[str] = [
     # Crossover
     "Crossover",
     "DBHandlingMode",
+    "Direction",
     "EAOperation",
     "EASettings",
     "FloatMutator",

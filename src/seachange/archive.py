@@ -12,10 +12,44 @@ from sqlmodel.sql.expression import SelectOfScalar
 from seachange.ea_settings import Direction
 from seachange.generators._shared import py_rng
 from seachange.individual import Individual
+from seachange.model import Model
 from seachange.population import Population
 
 type AgeRange = tuple[int, int] | None
 type FitnessRange = tuple[float, float] | None
+
+
+class GenerationRange(Model):
+    """The generations a run's archive spans.
+
+    Attributes
+    ----------
+    first : int
+        Earliest ``time_of_birth`` in the archive.
+    last : int
+        Latest ``time_of_death`` in the archive.
+    """
+
+    first: int
+    last: int
+
+
+class FitnessStats(Model):
+    """Summary statistics of the fitness of archived individuals.
+
+    Every field is ``NaN`` when no individual matched.
+
+    Attributes
+    ----------
+    min, max, mean, std, median : float
+        The statistic of the matching individuals' fitness.
+    """
+
+    min: float
+    max: float
+    mean: float
+    std: float
+    median: float
 
 
 class Archive:
@@ -464,8 +498,14 @@ class Archive:
             ).one()
 
     @property
-    def generation_range(self) -> tuple[int, int]:
-        """``(earliest_birth, latest_death)`` generation indices."""
+    def generation_range(self) -> GenerationRange:
+        """The earliest birth and latest death in the archive.
+
+        Returns
+        -------
+        GenerationRange
+            ``first`` and ``last`` generation; both ``0`` when empty.
+        """
         with Session(self.engine) as session:
             min_birth = session.exec(
                 select(func.min(Individual.time_of_birth)),
@@ -473,9 +513,9 @@ class Archive:
             max_death = session.exec(
                 select(func.max(Individual.time_of_death)),
             ).one()
-        return (min_birth or 0, max_death or 0)
+        return GenerationRange(first=min_birth or 0, last=max_death or 0)
 
-    def fitness_stats(self, birth_range: AgeRange = None) -> dict[str, float]:
+    def fitness_stats(self, birth_range: AgeRange = None) -> FitnessStats:
         """Return summary fitness statistics for archived individuals.
 
         Parameters
@@ -485,29 +525,23 @@ class Archive:
 
         Returns
         -------
-        dict[str, float]
-            Keys: ``"min"``, ``"max"``, ``"mean"``, ``"std"``, ``"median"``.
-            All ``NaN`` when no matching individuals exist.
+        FitnessStats
+            ``min``, ``max``, ``mean``, ``std`` and ``median``; all ``NaN``
+            when no matching individuals exist.
         """
         inds = self._fetch_all(self._base_query(birth_range=birth_range))
         if not inds:
             nan = float("nan")
-            return {
-                "min": nan,
-                "max": nan,
-                "mean": nan,
-                "std": nan,
-                "median": nan,
-            }
+            return FitnessStats(min=nan, max=nan, mean=nan, std=nan, median=nan)
 
         fitnesses = np.array([ind.fitness_ for ind in inds], dtype=float)
-        return {
-            "min": float(np.min(fitnesses)),
-            "max": float(np.max(fitnesses)),
-            "mean": float(np.mean(fitnesses)),
-            "std": float(np.std(fitnesses)),
-            "median": float(np.median(fitnesses)),
-        }
+        return FitnessStats(
+            min=float(np.min(fitnesses)),
+            max=float(np.max(fitnesses)),
+            mean=float(np.mean(fitnesses)),
+            std=float(np.std(fitnesses)),
+            median=float(np.median(fitnesses)),
+        )
 
     def close(self) -> None:
         """Release the database connection.

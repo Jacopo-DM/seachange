@@ -14,6 +14,7 @@ Import from `seachange` instead of `ariel.ec`: `from seachange import EA, Popula
 - `seachange.seed(n)` restarts every random draw seachange makes, so after `seed(5)` a whole run comes out the same every time. Python's global `random` is not touched.
 - `EA.restart(source, operations, *, generation=None, ...)` continues a recorded run in a new database (see Changed).
 - `seachange.Direction`, the type of the new `direction=` keyword: `Literal["max", "min"]`.
+- `seachange.FitnessStats` and `seachange.GenerationRange`, the records `Archive` returns (see Changed).
 - `examples/a2_revde.py`, the RevDE demo that used to be `revde.main()`.
 
 ### Changed
@@ -32,6 +33,7 @@ Import from `seachange` instead of `ariel.ec`: `from seachange import EA, Popula
 - **The default output folder is decided when the run starts.** `config.output_folder` defaults to the relative `__data__`, joined onto the working directory when `EA(...)` is created; a script that changes directory after importing now writes under its new folder.
 - **`ind.tags = {...}` replaces the tags instead of merging them.** To keep the old tags, write `ind.tags = {**ind.tags, "key": value}`. A call that relied on the merge loses the old tags without an error.
 - **`Population.sample`, `Population.shuffle` and every `Archive` draw use seachange's own generator** instead of Python's global `random` or SQLite's `random()`, so `seed()` covers them. They draw different values than before for the same global seed.
+- **`Archive` returns records instead of a dict and a tuple.** `archive.fitness_stats()["mean"]` becomes `archive.fitness_stats().mean` (a frozen `FitnessStats` with `min`, `max`, `mean`, `std`, `median`), and `lo, hi = archive.generation_range` becomes `span.first` and `span.last` (a `GenerationRange`).
 - **Unknown `get_solution` modes raise.** `ea.get_solution("bset")` raises `ValueError` naming the valid modes; it used to return `None`.
 
 ### Removed

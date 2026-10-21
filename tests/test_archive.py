@@ -6,9 +6,10 @@ from typing import cast
 
 import numpy as np
 import pytest
+from pydantic import ValidationError
 
 from seachange import EA, Direction, EAOperation
-from seachange.archive import Archive
+from seachange.archive import Archive, FitnessStats, GenerationRange
 from seachange.individual import Individual
 from seachange.population import Population
 from tests.misuse import untyped
@@ -123,18 +124,17 @@ def test_archive_size(archive: Archive) -> None:
 
 
 def test_archive_generation_range(archive: Archive) -> None:
-    """generation_range returns a (min_birth, max_death) tuple."""
-    lo, hi = archive.generation_range
-    assert isinstance(lo, int)
-    assert isinstance(hi, int)
-    assert hi >= lo
+    """generation_range gives the earliest birth and the latest death."""
+    span = archive.generation_range
+    assert isinstance(span, GenerationRange)
+    assert span.last >= span.first
 
 
 def test_archive_generation_range_values(archive: Archive) -> None:
     """Individuals born at gen 0 and alive through gen 5."""
-    lo, hi = archive.generation_range
-    assert lo == 0
-    assert hi == LAST_GENERATION
+    span = archive.generation_range
+    assert span.first == 0
+    assert span.last == LAST_GENERATION
 
 
 # ---------------------------------------------------------------------------
@@ -142,36 +142,38 @@ def test_archive_generation_range_values(archive: Archive) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_fitness_stats_returns_dict(archive: Archive) -> None:
-    """fitness_stats returns a dict with the five expected keys."""
+def test_fitness_stats_is_a_frozen_record(archive: Archive) -> None:
+    """fitness_stats returns a FitnessStats that cannot be changed."""
     stats = archive.fitness_stats()
-    assert set(stats.keys()) == {"min", "max", "mean", "std", "median"}
+    assert isinstance(stats, FitnessStats)
+    with pytest.raises(ValidationError, match="frozen"):
+        untyped(setattr)(stats, "mean", 0.0)
 
 
 def test_fitness_stats_min_max(archive: Archive) -> None:
     """Min and max fitness values match the known population range."""
     stats = archive.fitness_stats()
-    assert stats["min"] == pytest.approx(0.0)
-    assert stats["max"] == pytest.approx(19.0)
+    assert stats.min == pytest.approx(0.0)
+    assert stats.max == pytest.approx(19.0)
 
 
 def test_fitness_stats_mean(archive: Archive) -> None:
     """Mean fitness of 0..19 is 9.5."""
     stats = archive.fitness_stats()
-    assert stats["mean"] == pytest.approx(9.5)
+    assert stats.mean == pytest.approx(9.5)
 
 
 def test_fitness_stats_no_match_returns_nan(archive: Archive) -> None:
     """fitness_stats with an impossible birth_range returns NaN values."""
     stats = archive.fitness_stats(birth_range=(9999, 9999))
-    for v in stats.values():
+    for v in stats.model_dump().values():
         assert math.isnan(v)
 
 
 def test_fitness_stats_birth_range_filter(archive: Archive) -> None:
     """birth_range=(0, 0) restricts to individuals born at generation 0."""
     stats = archive.fitness_stats(birth_range=(0, 0))
-    assert not math.isnan(stats["min"])
+    assert not math.isnan(stats.min)
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 """seachange: a generational evolutionary algorithm engine."""
 
-from seachange.archive import Archive
+from seachange.archive import Archive, FitnessStats, GenerationRange
 from seachange.crossover import Crossover
 from seachange.ea import EA
 from seachange.ea_operation import EAOperation
@@ -24,32 +24,26 @@ from seachange.individual import (
 from seachange.population import Population
 
 __all__: list[str] = [
-    # EA engine
     "EA",
-    # Shared
     "SEED",
-    # Archive
     "Archive",
-    # Crossover
     "Crossover",
     "DBHandlingMode",
     "Direction",
     "EAOperation",
     "EASettings",
+    "FitnessStats",
     "FloatMutator",
     "Floats",
-    # Float generators / mutators
     "FloatsGenerator",
-    # Data layer
+    "GenerationRange",
     "Individual",
     "IntegerMutator",
     "Integers",
-    # Integer generators / mutators
     "IntegersGenerator",
     "JSONIterable",
     "JSONPrimitive",
     "JSONType",
-    # Population
     "Population",
     "config",
     "seed",

@@ -13,7 +13,8 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 | `ea_database.py` | creates the database file | `setup_database` |
 | `individual.py` | one row of the database: genotype, fitness, tags, birth and death | `Individual`, `JSONType`, `JSONPrimitive`, `JSONIterable` |
 | `population.py` | a list of individuals with selection helpers | `Population` |
-| `archive.py` | read-only queries over a finished run's database | `Archive` |
+| `archive.py` | read-only queries over a finished run's database | `Archive`, `FitnessStats`, `GenerationRange` |
+| `model.py` | the frozen base class for records | `Model` (internal) |
 | `crossover.py` | default crossover functions | `Crossover` |
 | `generators/` | random float and integer sequences and their mutations | `FloatsGenerator`, `IntegersGenerator`, `FloatMutator`, `IntegerMutator`, `Floats`, `Integers`, `SEED`, `seed` |
 | `generators/_shared.py` | the two shared generators (numpy `rng`, Python `py_rng`), `seed`, settings and types | internal |
@@ -21,7 +22,7 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 
 ## Import direction
 
-`ea` → `ea_database`, `ea_operation`, `ea_settings`, `individual`, `population`. `ea_database` → `ea_settings`. `ea_operation` → `population`. `archive` → `ea_settings`, `generators._shared`, `individual`, `population`. `population` → `ea_settings` (types only), `generators._shared`. `crossover` → `generators._shared`. `generators/*` → `generators._shared`. `optimizers` imports nothing from the package.
+`ea` → `ea_database`, `ea_operation`, `ea_settings`, `individual`, `population`. `ea_database` → `ea_settings`. `ea_operation` → `population`. `archive` → `ea_settings`, `generators._shared`, `individual`, `model`, `population`. `population` → `ea_settings` (types only), `generators._shared`. `crossover` → `generators._shared`. `generators/*` → `generators._shared`. `optimizers` imports nothing from the package.
 
 ## `tests/`
 

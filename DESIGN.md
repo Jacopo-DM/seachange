@@ -54,6 +54,7 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 - 2026-10-21: `size=None` returns a plain number, matching numpy, with typing overloads so a default `size=1` caller still gets a sequence type (user). The integer generators get the same overloads.
 - 2026-10-21: the fitness direction has one name everywhere, `direction: Literal["max", "min"]` (user, goal 6 C10). A boolean `maximise=` was rejected: `sort(maximise=False)` reads as "do not maximise" rather than "ascending".
 - 2026-10-21: a restart is `EA.restart(source, operations, *, generation=None, ...)`, and `EA(population, operations)` requires both (user, goal 6 C12). It makes a new run and a continued run two separate calls, which drops the `None` placeholder and the "either population or restart" error. The user accepted the migration cost because C10 and C2 already change ARIEL's calls.
+- 2026-10-21: `LICENSE` carries two copyright lines: 2025 for the ARIEL code (Jacopo Michele di Matteo and Ioannis Grigoriadis) and 2026 for the seachange changes (Jacopo Michele di Matteo). Chosen by the user.
 - 2026-10-21: the docs build fixes the `Todo` directive by loading `sphinx.ext.todo`, not by deleting the empty template sections (user).
 
 ## Rejected approaches

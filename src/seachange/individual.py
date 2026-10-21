@@ -10,6 +10,7 @@ type JSONType = JSONPrimitive | Sequence[JSONType] | dict[Hashable, JSONType]
 type JSONIterable = Sequence[JSONType] | dict[Hashable, JSONType]
 
 
+# Mutable on purpose: SQLAlchemy saves a table row by changing it
 class Individual(SQLModel, table=True):
     """
     A single candidate solution in an evolutionary algorithm.

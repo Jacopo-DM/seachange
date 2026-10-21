@@ -1,5 +1,7 @@
 """Test: the EA class."""
 
+import subprocess  # ruff: ignore[suspicious-subprocess-import]  # runs a fixed import check
+import sys
 from pathlib import Path
 
 import pytest
@@ -247,3 +249,18 @@ def test_ea_writes_under_the_working_directory_at_creation(
     monkeypatch.chdir(tmp_path)
     EA(population=make_pop(), operations=[noop], quiet=True)
     assert (tmp_path / "__data__" / "database.db").exists()
+
+
+def test_importing_seachange_leaves_the_traceback_printer_alone(
+    tmp_path: Path,
+) -> None:
+    """A library import must not replace the program's sys.excepthook."""
+    check = (
+        "import sys; hook = sys.excepthook; import seachange; "
+        "assert sys.excepthook is hook, 'excepthook replaced'"
+    )
+    subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]  # fixed argv, no outside input
+        [sys.executable, "-c", check],
+        cwd=tmp_path,
+        check=True,
+    )

@@ -13,7 +13,6 @@ from rich.progress import (
     TextColumn,
     TimeRemainingColumn,
 )
-from rich.traceback import install
 from sqlalchemy import Engine, create_engine, func
 from sqlmodel import Session, col, select
 
@@ -22,8 +21,6 @@ from seachange.ea_operation import Operation
 from seachange.ea_settings import DBHandlingMode, Direction, config
 from seachange.individual import Individual
 from seachange.population import Population
-
-install()
 
 
 class EA:

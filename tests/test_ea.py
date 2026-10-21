@@ -17,6 +17,7 @@ from tests.ea_helpers import (
     make_pop,
     noop,
 )
+from tests.misuse import untyped
 
 pytestmark = pytest.mark.usefixtures("dispose_engines")
 
@@ -27,26 +28,12 @@ def test_ea_initializes(tmp_path: Path) -> None:
     assert ea.current_generation == 0
 
 
-def test_ea_no_operations_raises(tmp_path: Path) -> None:
-    """EA raises ValueError when operations is None."""
-    with pytest.raises(ValueError, match="operations"):
-        EA(
-            population=make_pop(),
-            operations=None,
-            db_file_path=tmp_path / "db.db",
-            quiet=True,
-        )
-
-
-def test_ea_no_population_no_restart_raises(tmp_path: Path) -> None:
-    """EA raises ValueError when neither population nor restart is given."""
-    with pytest.raises(ValueError, match="population"):
-        EA(
-            population=None,
-            operations=[noop],
-            db_file_path=tmp_path / "db.db",
-            quiet=True,
-        )
+def test_ea_requires_population_and_operations(tmp_path: Path) -> None:
+    """Both are required: a restart goes through EA.restart instead."""
+    with pytest.raises(TypeError, match="operations"):
+        untyped(EA)(population=make_pop(), db_file_path=tmp_path / "db.db")
+    with pytest.raises(TypeError, match="population"):
+        untyped(EA)(operations=[noop], db_file_path=tmp_path / "db.db")
 
 
 def test_ea_creates_database_file(tmp_path: Path) -> None:

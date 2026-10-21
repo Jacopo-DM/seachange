@@ -29,13 +29,15 @@ def _finished_run(tmp_path: Path) -> Path:
 
 def _restart(
     tmp_path: Path,
-    source: Path | tuple[Path, int],
+    source: Path,
     *,
+    generation: int | None = None,
     name: str = "restarted.db",
 ) -> EA:
-    return EA(
-        restart=source,
-        operations=[noop],
+    return EA.restart(
+        source,
+        [noop],
+        generation=generation,
         db_file_path=tmp_path / name,
         quiet=True,
     )
@@ -50,18 +52,18 @@ def test_restart_continues_after_the_last_generation(tmp_path: Path) -> None:
 
 
 def test_restart_from_a_chosen_generation(tmp_path: Path) -> None:
-    """A (path, generation) pair restarts from that generation."""
+    """generation= restarts from that generation."""
     source = _finished_run(tmp_path / "first")
-    ea = _restart(tmp_path / "second", (source, RESTART_GENERATION))
+    ea = _restart(tmp_path / "second", source, generation=RESTART_GENERATION)
     assert ea.current_generation == RESTART_GENERATION + 1
 
 
 def test_restart_from_a_string_path(tmp_path: Path) -> None:
     """A path may be given as a string."""
     source = _finished_run(tmp_path / "first")
-    ea = EA(
-        restart=str(source),
-        operations=[noop],
+    ea = EA.restart(
+        str(source),
+        [noop],
         db_file_path=tmp_path / "second" / "restarted.db",
         quiet=True,
     )
@@ -88,7 +90,7 @@ def test_restart_from_a_generation_without_individuals(tmp_path: Path) -> None:
     """A generation that no evaluated individual lived through is an error."""
     source = _finished_run(tmp_path / "first")
     with pytest.raises(ValueError, match="No evaluated individuals"):
-        _restart(tmp_path / "second", (source, RESTART_STEPS * 100))
+        _restart(tmp_path / "second", source, generation=RESTART_STEPS * 100)
 
 
 def test_unknown_db_handling_keeps_the_existing_file(tmp_path: Path) -> None:
@@ -128,9 +130,9 @@ def test_fetch_population_can_include_dead_and_unevaluated(
 def test_restart_keeps_an_explicit_first_generation(tmp_path: Path) -> None:
     """first_generation_id overrides the generation derived from the restart."""
     source = _finished_run(tmp_path / "first")
-    ea = EA(
-        restart=source,
-        operations=[noop],
+    ea = EA.restart(
+        source,
+        [noop],
         db_file_path=tmp_path / "second" / "restarted.db",
         first_generation_id=FIRST_GENERATION_ID,
         quiet=True,
@@ -150,9 +152,9 @@ def test_restart_onto_its_own_default_file_raises(
     monkeypatch.setattr(config, "output_folder", tmp_path)
     monkeypatch.setattr(config, "db_file_name", source.name)
     with pytest.raises(ValueError, match="same file"):
-        EA(
-            restart=source,
-            operations=[noop],
+        EA.restart(
+            source,
+            [noop],
             db_handling=db_handling,
             quiet=True,
         )
@@ -168,9 +170,9 @@ def test_restart_onto_its_own_file_by_another_path_raises(
     before = source.read_bytes()
     monkeypatch.chdir(tmp_path)
     with pytest.raises(ValueError, match="same file"):
-        EA(
-            restart=source.name,
-            operations=[noop],
+        EA.restart(
+            source.name,
+            [noop],
             db_file_path=source.resolve(),
             quiet=True,
         )

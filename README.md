@@ -77,20 +77,19 @@ print(ea.get_solution("best").genotype)
 
 It prints a progress bar and then the best bit string, all ones after 50 generations. The run is saved in `__data__/database.db` under the current folder; pass `db_file_path=` to `EA` to put it elsewhere. The same example, documented, is in [examples/a1_one_max.py](examples/a1_one_max.py).
 
-To continue a saved run, pass its database instead of a population, and give the new run its own file:
+To continue a saved run, pass its database to `EA.restart` and give the new run its own file:
 
 ```python
 from pathlib import Path
 
-ea = EA(
-    None,
+ea = EA.restart(
+    "__data__/database.db",
     operations,
-    restart="__data__/database.db",
     db_file_path=Path("__data__/continued.db"),
 )
 ```
 
-Without `db_file_path`, the new run would write to the default `__data__/database.db`, the file you are restarting from, so `EA` raises `ValueError` instead of overwriting it. Pass `restart=(path, generation)` to continue from an earlier generation.
+Without `db_file_path`, the new run would write to the default `__data__/database.db`, the file you are restarting from, so `EA.restart` raises `ValueError` instead of overwriting it. Pass `generation=` to continue from an earlier generation.
 
 ## Documentation
 

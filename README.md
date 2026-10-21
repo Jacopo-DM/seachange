@@ -9,7 +9,7 @@ It started as the evolution engine of [ARIEL](https://github.com/ci-group/ariel)
 seachange needs Python 3.13 or later. It is not on PyPI yet, so install it from a local clone:
 
 ```bash
-git clone <repository URL> seachange
+git clone https://github.com/Jacopo-DM/seachange seachange
 uv add ./seachange
 ```
 

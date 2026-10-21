@@ -18,6 +18,10 @@ dependencies = [
     "sqlmodel>=0.0.25",
 ]
 
+[project.urls]
+Repository = "https://github.com/Jacopo-DM/seachange"
+Issues = "https://github.com/Jacopo-DM/seachange/issues"
+
 [build-system]
 requires = ["uv_build>=0.13.1,<0.14.0"]
 build-backend = "uv_build"

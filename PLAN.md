@@ -40,7 +40,6 @@ Approved 2026-10-21. One task per commit.
 
 ### Tier 2: goal 7
 
-- **T8 Add the licence** (goal 7). Files: new `LICENSE` (copied from ARIEL), `pyproject.toml` (`license = "GPL-3.0-or-later"`, plus `license-files`). Risk low. Cost: 2 lines and one file. Verify: `uv build` puts the licence in the wheel's metadata.
 - **T9 Write `CHANGELOG.md`** (goal 7). After goal 6. It lists every change from `ariel.ec` (goals 1, 2 and 6), each with the old call and the new one. Risk low. Verify: every behaviour change recorded in DESIGN.md has a line.
 - **T10 Build-and-install check** (goal 7). Files: `CLAUDE.md` (the commands). Run `uv build`, then `uv run --isolated --with dist/<wheel> python <README example>` in a temporary folder, and record the commands with their output. Risk low. Verify: it prints `best fitness 20.0 of 20`.
 - **T11 Repository URL** (goal 7). Blocked on hosting. Files: `README.md` (install step), `pyproject.toml` (`[project.urls]`).

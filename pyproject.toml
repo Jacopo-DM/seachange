@@ -3,6 +3,8 @@ name = "seachange"
 version = "0.1.0"
 description = "Generational evolutionary algorithm engine with a SQLite-backed population, extracted from ARIEL."
 readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 authors = [
     { name = "jmdm", email = "jacopo.michele.dimatteo@gmail.com" }
 ]

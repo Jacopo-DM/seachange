@@ -105,12 +105,14 @@ class EA:
         ValueError
             If the operations are missing, both or neither of population and
             restart are given, or the restart database has no usable
-            individuals.
+            individuals, or the restart database is the file this run
+            would write to.
         """
         if operations is None:
             msg = "'operations' is required."
             raise ValueError(msg)
 
+        target_db = db_file_path or config.db_file_path
         if restart is not None:
             source_db, restart_gen = (
                 (Path(restart), None)
@@ -120,6 +122,13 @@ class EA:
             if not source_db.exists():
                 msg = f"Restart database not found: {source_db}"
                 raise FileNotFoundError(msg)
+            if source_db.resolve() == target_db.resolve():
+                msg = (
+                    "restart source and db_file_path are the same file "
+                    f"({source_db}); pass db_file_path= to write the new "
+                    "run elsewhere"
+                )
+                raise ValueError(msg)
 
             source_engine = create_engine(f"sqlite:///{source_db}")
             try:
@@ -195,7 +204,7 @@ class EA:
             quiet=quiet if quiet is not None else config.quiet,
         )
         self.engine: Engine = setup_database(
-            db_file_path=db_file_path or config.db_file_path,
+            db_file_path=target_db,
             db_handling=db_handling or config.db_handling,
             console=self.console,
         )

@@ -90,7 +90,7 @@ ea = EA(
 )
 ```
 
-Without `db_file_path`, the new run writes to the default `__data__/database.db` and replaces the run you restarted from. Pass `restart=(path, generation)` to continue from an earlier generation.
+Without `db_file_path`, the new run would write to the default `__data__/database.db`, the file you are restarting from, so `EA` raises `ValueError` instead of overwriting it. Pass `restart=(path, generation)` to continue from an earlier generation.
 
 ## Documentation
 

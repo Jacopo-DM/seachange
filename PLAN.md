@@ -8,7 +8,7 @@ Order (approved 2026-10-21): 1 to 5 first, because they are small and fix or pin
 
 | # | Name | Goal | Kind | Success measure | Status | Added |
 |---|---|---|---|---|---|---|
-| 1 | restart-guard | A restart whose new database file would be its own source raises an error instead of deleting the source. | new behaviour | A test calls `EA(None, ops, restart=X)` where the default `db_file_path` is also `X`: it raises `ValueError` naming the path, and the file's bytes are unchanged afterwards. The existing restart tests, which use a separate `db_file_path`, pass unchanged. | approved 2026-10-21 | 2026-10-21 |
+| 1 | restart-guard | Done 2026-10-21 by T5: `EA` raises `ValueError` when the restart source and the target database are the same file, in both `db_handling` modes, before opening either. | new behaviour | met: 3 new tests in `tests/test_ea_restart.py`; the 10 existing restart tests pass unchanged | done 2026-10-21 | 2026-10-21 |
 | 2 | floats-size-none | `FloatsGenerator.uniform`, `normal` and `lognormal` with `size=None` return one plain `float`, as numpy does. | new behaviour | Hypothesis tests show each of the three returns a `float` for `size=None` and a list of the requested length otherwise. The three `known bug` ignores are gone and `ty check` reports 0 diagnostics. | approved 2026-10-21 | 2026-10-21 |
 | 3 | docs-build | Done 2026-10-21 by T1 (`sphinx.ext.todo` loaded); the `docs.yml` command exits 0. | improvement, behaviour unchanged | met | done 2026-10-21 | 2026-10-21 |
 | 4 | examples-tested | Done 2026-10-21 by T4: `tests/test_examples.py` runs `examples/a1_one_max.py` and checks `best fitness 20.0 of 20`; the empty `a0_hello_world.py` was deleted. | improvement, behaviour unchanged | met | done 2026-10-21 | 2026-10-21 |
@@ -40,7 +40,6 @@ Draft 2026-10-21, awaiting the user's approval. One task per commit. Every area 
 
 ### Tier 1: goals 1 to 5 (approved order: these first)
 
-- **T5 Guard restarts onto their own source** (goal 1). Files: `src/seachange/ea.py`, `tests/test_ea_restart.py`. Write the tests first (both `db_handling` modes, bytes unchanged, relative against absolute path) and watch them fail. Then add the `Path.resolve()` comparison and the `ValueError`, and update the `Raises` section of the docstring. Remove the Known problems entry and the README sentence that works around it. The README's restart example already passes `db_file_path` and stays. Risk low: one new check before any file is opened. Cost: about 8 lines plus 3 tests. Verify: the new tests, plus the existing 10 restart tests unchanged.
 - **T6 Return a number for `size=None`, with overloads** (goal 2). Files: `src/seachange/generators/sampling.py`, `tests/test_generators.py`. Hypothesis tests first: return type and length for `size=None` and for `int` sizes, on all six methods. Then add the `@overload`s and the runtime fix in the three float methods, and remove the three `known bug` ignores and their Known problems entry. Risk medium: the overloads have to satisfy mypy, pyright and ty at once, and `Floats` and `Integers` are used across `generators/` and `crossover.py`. Cost: about 60 lines, mostly overload stubs; no new dependency. Verify: the new tests, existing generator and crossover tests unchanged, mypy clean, `ty check` 0 diagnostics.
 
 ### Tier 2: goals 6 and 7 (after Tier 1)
@@ -65,6 +64,5 @@ Draft 2026-10-21, awaiting the user's approval. One task per commit. Every area 
 ## Known problems
 
 - `FloatsGenerator.uniform`, `normal` and `lognormal` crash with `AttributeError: 'float' object has no attribute 'tolist'` when `size=None` (`src/seachange/generators/sampling.py`). numpy returns a plain float there. ARIEL has the same bug. The lines carry `# type: ignore[union-attr]  # known bug`, and ty reports them (3 diagnostics).
-- `EA(None, ops, restart="__data__/database.db")` without `db_file_path` deletes the source run: the new run opens the default path, which is the same file, and `db_handling="delete"` removes it after the restart rows are read. Checked 2026-10-21 (102 KB before, 32 KB after, only the restart generation left). ARIEL has the same code. The README tells users to pass a separate `db_file_path`; no fix without the user's approval.
 - Importing `seachange.optimizers.revde` creates `__data__/` in the working directory (module-level `mkdir`), copied as is.
 - `uv-cr-lib`'s template `tools/run_notebooks.py` fails mypy until `nbclient`, `nbformat` and `ipykernel` are installed; they are in the dev group here.

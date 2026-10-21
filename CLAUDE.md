@@ -27,6 +27,7 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 | Types (mypy) | `uv run --no-sync mypy .` | passes, 34 files, <1 s |
 | Types (ty, advisory) | `uv run --locked ty check` | 3 diagnostics, all the known bug in PLAN.md |
 | Tests | `uv run --no-sync pytest -q` | 187 passed, 100% branch coverage, ~1 s; 79 ResourceWarnings (PLAN.md) |
+| Docs | `uv run --no-sync sphinx-build -W --keep-going -b html docs docs/_build/html` | passes, ~2 s; same command as `docs.yml` |
 | Pre-commit | `uv run --no-sync pre-commit run --all-files` | passes, <1 s; image and notebook hooks skip (no files) |
 
 ## Code rules

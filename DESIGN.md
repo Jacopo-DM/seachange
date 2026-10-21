@@ -63,7 +63,9 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 
 ## Results
 
-None yet.
+| Date | Task | Goal | Change | Measured effect |
+|---|---|---|---|---|
+| 2026-10-21 | T1 | 3 | `docs/conf.py` loads `sphinx.ext.todo` | docs build with `-W`: 1 error before, 0 after (exit 0) |
 
 ## Gotchas
 

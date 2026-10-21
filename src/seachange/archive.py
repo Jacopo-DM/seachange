@@ -170,8 +170,8 @@ class Archive:
 
     def best_individual(
         self,
-        direction: Direction = "min",
         *,
+        direction: Direction,
         birth_range: AgeRange = None,
         death_range: AgeRange = None,
     ) -> Individual:
@@ -179,9 +179,10 @@ class Archive:
 
         Parameters
         ----------
-        direction : {"max", "min"}, optional
+        direction : {"max", "min"}
             ``"min"`` returns the lowest-fitness individual (minimisation);
-            ``"max"`` returns the highest (maximisation). Default is ``"min"``.
+            ``"max"`` returns the highest (maximisation). Required: the
+            archive does not know which way the run optimised.
         birth_range : (int, int) or None, optional
         death_range : (int, int) or None, optional
 
@@ -255,8 +256,8 @@ class Archive:
     def hall_of_fame(
         self,
         n: int = 10,
-        direction: Direction = "min",
         *,
+        direction: Direction,
         birth_range: AgeRange = None,
         death_range: AgeRange = None,
     ) -> Population:
@@ -266,8 +267,8 @@ class Archive:
         ----------
         n : int, optional
             Size of the hall of fame. Default is ``10``.
-        direction : {"max", "min"}, optional
-            Optimisation direction. Default is ``"min"``.
+        direction : {"max", "min"}
+            Optimisation direction. Required.
         birth_range : (int, int) or None, optional
         death_range : (int, int) or None, optional
 
@@ -292,8 +293,8 @@ class Archive:
         self,
         n: int,
         tournament_size: int = 3,
-        direction: Direction = "min",
         *,
+        direction: Direction,
         birth_range: AgeRange = None,
         death_range: AgeRange = None,
         pool_multiplier: int = 4,
@@ -311,10 +312,9 @@ class Archive:
             Number of tournament winners to return.
         tournament_size : int, optional
             Number of competitors drawn per tournament. Default is ``3``.
-        direction : {"max", "min"}, optional
+        direction : {"max", "min"}
             ``"min"`` picks the lowest-fitness contestant as the winner
-            (minimisation problem). ``"max"`` picks the highest. Default
-            is ``"min"``.
+            (minimisation problem). ``"max"`` picks the highest. Required.
         birth_range : (int, int) or None, optional
         death_range : (int, int) or None, optional
         pool_multiplier : int, optional

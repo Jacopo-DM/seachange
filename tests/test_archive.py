@@ -276,13 +276,13 @@ def test_random_population_n_larger_than_archive(archive: Archive) -> None:
 
 def test_hall_of_fame_returns_population(archive: Archive) -> None:
     """hall_of_fame returns a Population."""
-    hof = archive.hall_of_fame(n=5)
+    hof = archive.hall_of_fame(n=5, direction="min")
     assert isinstance(hof, Population)
 
 
 def test_hall_of_fame_size(archive: Archive) -> None:
     """hall_of_fame returns at most n individuals."""
-    hof = archive.hall_of_fame(n=HALL_SIZE)
+    hof = archive.hall_of_fame(n=HALL_SIZE, direction="min")
     assert len(hof) <= HALL_SIZE
 
 
@@ -314,7 +314,7 @@ def test_hall_of_fame_max_best_is_highest(archive: Archive) -> None:
 
 def test_hall_of_fame_birth_range(archive: Archive) -> None:
     """hall_of_fame respects birth_range."""
-    hof = archive.hall_of_fame(n=5, birth_range=(0, 0))
+    hof = archive.hall_of_fame(n=5, direction="min", birth_range=(0, 0))
     for ind in hof:
         assert ind.time_of_birth == 0
 
@@ -326,13 +326,15 @@ def test_hall_of_fame_birth_range(archive: Archive) -> None:
 
 def test_tournament_population_returns_population(archive: Archive) -> None:
     """tournament_population returns a Population."""
-    pop = archive.tournament_population(n=3, tournament_size=2)
+    pop = archive.tournament_population(n=3, tournament_size=2, direction="min")
     assert isinstance(pop, Population)
 
 
 def test_tournament_population_size(archive: Archive) -> None:
     """tournament_population returns exactly n individuals."""
-    pop = archive.tournament_population(n=NUM_WINNERS, tournament_size=2)
+    pop = archive.tournament_population(
+        n=NUM_WINNERS, tournament_size=2, direction="min"
+    )
     assert len(pop) == NUM_WINNERS
 
 
@@ -356,7 +358,7 @@ def test_tournament_size_exceeds_pool_raises(archive: Archive) -> None:
     """tournament_size larger than the pool raises AssertionError."""
     with pytest.raises(AssertionError, match="tournament_size"):
         archive.tournament_population(
-            n=1, tournament_size=9999, pool_multiplier=1
+            n=1, tournament_size=9999, direction="min", pool_multiplier=1
         )
 
 
@@ -429,6 +431,25 @@ def test_fitness_percentile_impossible_birth_range_empty(
     assert len(pop) == 0
 
 
+@pytest.mark.parametrize(
+    "method", ["best_individual", "hall_of_fame", "tournament_population"]
+)
+def test_ranking_methods_require_a_direction(
+    archive: Archive, method: str
+) -> None:
+    """Without a direction the archive would have to guess best from worst."""
+    call = untyped(getattr(archive, method))
+    args = () if method == "best_individual" else (3,)
+    with pytest.raises(TypeError, match="direction"):
+        call(*args)
+
+
+def test_direction_is_keyword_only(archive: Archive) -> None:
+    """best_individual("max") is refused; the keyword shows the intent."""
+    with pytest.raises(TypeError):
+        untyped(archive.best_individual)("max")
+
+
 def test_fitness_percentile_population_has_no_direction(
     archive: Archive,
 ) -> None:
@@ -451,7 +472,7 @@ TOP_N = 3
 
 def test_best_individual_maximising(archive: Archive) -> None:
     """In max mode the highest fitness wins."""
-    best = archive.best_individual("max")
+    best = archive.best_individual(direction="max")
     assert _fitness(best) == pytest.approx(BEST_FITNESS)
 
 
@@ -465,8 +486,12 @@ def test_hall_of_fame_maximising(archive: Archive) -> None:
 
 def test_death_range_filters_the_hall_of_fame(archive: Archive) -> None:
     """A death range that covers everyone keeps everyone; none keeps nobody."""
-    everyone = archive.hall_of_fame(n=NUM_ALIVE, death_range=EVERYONE)
-    nobody = archive.hall_of_fame(n=NUM_ALIVE, death_range=NOBODY)
+    everyone = archive.hall_of_fame(
+        n=NUM_ALIVE, direction="min", death_range=EVERYONE
+    )
+    nobody = archive.hall_of_fame(
+        n=NUM_ALIVE, direction="min", death_range=NOBODY
+    )
     assert len(everyone) == NUM_ALIVE
     assert len(nobody) == 0
 
@@ -476,7 +501,7 @@ def test_best_individual_of_an_empty_selection_fails(
 ) -> None:
     """No evaluated individual in range is an error."""
     with pytest.raises(ValueError, match="No evaluated individuals"):
-        archive.best_individual(birth_range=NOBODY)
+        archive.best_individual(direction="min", birth_range=NOBODY)
 
 
 def test_random_individual_among_the_dead_fails(archive: Archive) -> None:
@@ -488,7 +513,7 @@ def test_random_individual_among_the_dead_fails(archive: Archive) -> None:
 def test_tournament_of_an_empty_pool_fails(archive: Archive) -> None:
     """A birth range without individuals gives an empty pool."""
     with pytest.raises(ValueError, match="No individuals match"):
-        archive.tournament_population(n=2, birth_range=NOBODY)
+        archive.tournament_population(n=2, direction="min", birth_range=NOBODY)
 
 
 def test_unknown_direction_leaves_the_order_to_the_database(
@@ -496,5 +521,5 @@ def test_unknown_direction_leaves_the_order_to_the_database(
 ) -> None:
     """A mode that is neither min nor max applies no ordering."""
     mode = cast("Direction", "unsorted")
-    assert isinstance(archive.best_individual(mode), Individual)
+    assert isinstance(archive.best_individual(direction=mode), Individual)
     assert len(archive.hall_of_fame(n=TOP_N, direction=mode)) == TOP_N

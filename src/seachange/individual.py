@@ -161,15 +161,17 @@ class Individual(SQLModel, table=True):
         return self.tags_
 
     @tags.setter
-    def tags(self, update: dict[JSONType, JSONType]) -> None:
-        """Merge new tags into the existing tag dictionary.
+    def tags(self, value: dict[JSONType, JSONType]) -> None:
+        """Replace the tag dictionary with a copy of ``value``.
 
-        Existing keys are overwritten by keys present in ``update``;
-        keys absent from ``update`` are preserved.
+        To keep the existing tags, merge them in:
+        ``ind.tags = {**ind.tags, "key": "value"}``. Changing the dict in
+        place (``ind.tags["key"] = ...``) is not saved to the database,
+        because the JSON column does not track changes inside it.
 
         Parameters
         ----------
-        update : dict[JSONType, JSONType]
-            Key-value pairs to merge into ``tags_``.
+        value : dict[JSONType, JSONType]
+            The new tags.
         """
-        self.tags_ = {**self.tags_, **update}
+        self.tags_ = dict(value)

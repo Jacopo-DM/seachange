@@ -68,11 +68,19 @@ def test_tags_default_is_empty_dict() -> None:
     assert ind.tags == {}
 
 
-def test_tags_setter_merges() -> None:
-    """Setting tags merges new keys into the existing dict."""
+def test_tags_setter_replaces() -> None:
+    """Assigning tags replaces the whole dict, like any other assignment."""
     ind = Individual()
     ind.tags = {"a": 1}
     ind.tags = {"b": 2}
+    assert ind.tags == {"b": 2}
+
+
+def test_tags_merge_is_written_out() -> None:
+    """To keep the old keys, merge them into the new dict explicitly."""
+    ind = Individual()
+    ind.tags = {"a": 1}
+    ind.tags = {**ind.tags, "b": 2}
     assert ind.tags == {"a": 1, "b": 2}
 
 

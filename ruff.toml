@@ -1,0 +1,105 @@
+# Assume Python 3.13
+target-version = "py313"
+
+# Exclude a variety of commonly ignored directories.
+exclude = [".venv", ".git", ".typings"]
+
+# Customization of the linter and formatter
+fix = true                # Enable auto-fixes for all rules
+unsafe-fixes = true       # Enable unsafe auto-fixes
+show-fixes = true         # Show fixes in the output
+preview = true            # Allow unstable features
+respect-gitignore = false # Ignore files listed in .gitignore
+
+# Same as Black.
+line-length = 80
+indent-width = 4
+
+[format]
+preview = true
+
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Mine
+line-ending = "lf"
+
+# Enable auto-formatting of code examples in docstrings.
+docstring-code-format = true
+
+# Set the line length limit used when formatting code snippets in docstrings.
+docstring-code-line-length = "dynamic"
+
+[lint.pycodestyle]
+ignore-overlong-task-comments = true
+max-doc-length = 80
+max-line-length = 80
+
+[lint.pydocstyle]
+convention = "numpy"
+
+[lint]
+select = ["ALL"]
+ignore = [
+    # --- Necessary (avoid conflict) ---
+    "incorrect-blank-line-before-class",   # one-blank-line-before-class
+    "multi-line-summary-first-line",   # multi-line-summary-first-line
+    "relative-imports", # relative-imports
+    "single-line-implicit-string-concatenation", # single-line-implicit-string-concatenation (--x COM812)
+    "missing-trailing-comma", # missing-trailing-comma (conflicts with the formatter)
+    # --- Unnecessary (beyond usual scope) ---
+    "missing-copyright-notice", # Requests copyright notice
+    "missing-todo-link",  # Requests issue-link under TODO
+    "implicit-namespace-package", # implicit module __init__ thing
+    # --- Annoying (but useful) ---
+    "commented-out-code",  # Found commented-out code
+    "undocumented-public-class", # No docstring in public class
+    "undocumented-public-method", # No docstring in public method
+    "undocumented-public-function", # No docstring in public function
+    "undocumented-magic-method", # No docstring in public magic method
+]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+preview = true
+allowed-confusables = []
+task-tags = ["TODO", "WARN", "[ ]", "[~]", "[x]", "[?]", "[!]"]
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# Allow assertions in tests.
+# Source: https://github.com/astral-sh/ruff/issues/4368#issuecomment-2245567481
+[lint.extend-per-file-ignores]
+"**/examples/**/*.py" = [
+    "undocumented-public-class", # Missing docstring public class
+    "undocumented-public-method", # Missing docstring public method
+    "undocumented-public-function", # Missing docstring public function
+]
+"**/tests/**/*.py" = [
+    "assert", # asserts not allowed --> ok in tests
+]
+"*/test_*.py" = [
+    "assert", # asserts not allowed --> ok in tests
+]
+"tests/functional/*.ipynb" = [
+    "assert", # functional notebooks close each section with plain asserts
+    "print", # and show their results with print
+]
+
+# --- Standards additions (python-standards) --- #
+# Ruff's own rule set cannot say "no Any, no dataclass"; banned-api can.
+[lint.flake8-tidy-imports.banned-api]
+"typing.Any".msg = "No Any. Use a model, a Protocol or a TypeVar. See typing-and-pydantic.md."
+"dataclasses.dataclass".msg = "Use a pydantic BaseModel. Exceptions need a reason, see core.md."
+"pydantic.dataclasses".msg = "Use a pydantic BaseModel, not pydantic dataclasses."
+"typing.NamedTuple".msg = "Use a frozen pydantic BaseModel."
+"collections.namedtuple".msg = "Use a frozen pydantic BaseModel."
+"typing.TypedDict".msg = "Use a pydantic BaseModel. Exceptions need a reason, see core.md."

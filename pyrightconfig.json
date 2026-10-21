@@ -1,0 +1,18 @@
+{
+    "pythonVersion": "3.13",
+    "typeCheckingMode": "strict",
+    "deprecateTypingAliases": true,
+    "include": [
+        "src/**/*.py",
+        "examples/**/*.py",
+        "tests/**/*.py",
+    ],
+    "stubPath": ".typings",
+    // -------------------------------------------------------------------- //
+    // "reportArgumentType": false,
+    // "reportUnknownMemberType": false,
+    // "reportAttributeAccessIssue": false,
+    // "reportUnknownVariableType": false,
+    // "reportUnknownArgumentType": false
+    // -------------------------------------------------------------------- //
+}

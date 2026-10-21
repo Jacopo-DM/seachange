@@ -1,0 +1,44 @@
+# uv-cr and uv-cr-lib install the hook; in a clone run once: uv run pre-commit install
+# Every hook runs through uv, so it uses the locked tool versions.
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+repos:
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.13.1
+    hooks:
+      - id: uv-lock
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --locked ruff format
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --locked ruff check --fix
+        language: system
+        types_or: [python, pyi]
+      - id: mypy
+        name: mypy
+        entry: uv run --locked mypy .
+        language: system
+        pass_filenames: false
+        types_or: [python, pyi]
+      - id: compress-images
+        name: compress images (docs, examples)
+        entry: uv run --locked python tools/compress_images.py
+        language: system
+        files: (?i)^(docs|examples)/.*\.(png|jpe?g)$
+      - id: run-notebooks
+        name: run functional notebooks (staged)
+        entry: uv run --locked python tools/run_notebooks.py --timeout 60
+        language: system
+        files: ^tests/functional/.*\.ipynb$
+      - id: run-notebooks-all
+        name: run functional notebooks (all)
+        entry: uv run --locked python tools/run_notebooks.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

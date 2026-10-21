@@ -1,0 +1,14 @@
+# ty, Astral's type checker. It runs next to mypy and never blocks: its findings
+# show in the editor and from `uv run --locked ty check`, but the Stop hook,
+# pre-commit and CI do not run it (ty is still before 1.0).
+[environment]
+python-version = "3.13"
+
+[analysis]
+# Each checker keeps its own ignore comment: ty reads `# ty: ignore[rule]  # reason`
+# and mypy reads `# type: ignore[code]  # reason`.
+respect-type-ignore-comments = false
+
+[terminal]
+# Warnings stay warnings; nothing here fails a run on them.
+error-on-warning = false

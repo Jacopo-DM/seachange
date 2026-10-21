@@ -1,0 +1,41 @@
+# Pulled into every project by `rsync-sync pull python`. Action SHAs and the uv version
+# come from docs.astral.sh/uv/guides/integration/github (uv 0.13.1). Let Dependabot bump them.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Use the version in requires-python and mypy.ini. A library lists its
+        # oldest and newest.
+        python-version: ["3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.13.1"
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+      - name: Install the locked environment
+        run: uv sync --locked
+      - name: Format
+        run: uv run ruff format --check
+      - name: Lint (ruff.toml has fix = true, so read-only here)
+        run: uv run ruff check --no-fix
+      - name: Types
+        run: uv run mypy .
+      - name: Tests and coverage
+        run: uv run pytest

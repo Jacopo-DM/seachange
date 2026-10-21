@@ -71,9 +71,10 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 | 2026-10-21 | T3 | 5 | `dispose_engines` fixture in `tests/conftest.py`, opted into by three test modules; one test disposes its own engine; `pytest.ini` fails on leaks | full suite: 77 warnings before, 0 after (3 runs); with the leak put back the suite fails |
 | 2026-10-21 | T4 | 4 | `tests/test_examples.py` runs the one-max example; `a0_hello_world.py` deleted | 187 tests before, 188 after, suite ~0.8 s to ~1.3 s; the test fails when the example runs 1 generation |
 | 2026-10-21 | T5 | 1 | `EA.__init__` compares the resolved restart source and target database and raises `ValueError` if they match | 3 new tests failed before (delete mode overwrote the source; halt raised `FileExistsError`) and pass after; 191 tests pass |
+| 2026-10-21 | T6 | 2 | `@overload`s on `integers`, both `choice` methods, `uniform`, `normal` and `lognormal`; the float methods wrap numpy's result in `np.asarray` before `.tolist()` | before: 2 new tests failed at runtime and mypy found 10 errors in the new tests; after: 196 tests pass, mypy clean, `ty check` 3 diagnostics to 0; pyright not installed, so not run |
 
 ## Gotchas
 
-- The dependency versions are newer than ARIEL's lock (numpy 2.5.4, sqlalchemy 2.1.6, sqlmodel 0.0.48 against 2.3.3, 2.0.43, 0.0.27). numpy 2.5's stubs are what exposed the `size=None` bug in PLAN.md Known problems.
+- The dependency versions are newer than ARIEL's lock (numpy 2.5.4, sqlalchemy 2.1.6, sqlmodel 0.0.48 against 2.3.3, 2.0.43, 0.0.27). numpy 2.5's stubs are what exposed the `size=None` crash (fixed by T6).
 - A SQLite connection that the garbage collector closes raises its `ResourceWarning` inside `__del__`, where pytest catches it as an unraisable exception and reports `PytestUnraisableExceptionWarning`. So `-W error::ResourceWarning` alone never fails a test for a leak; `pytest.ini` turns both into errors. The failure is reported on whichever test is running when the collector runs, often the test after the leaking one.
 - ruff bans `autouse=True` fixtures (`pytest-fixture-autouse`). Shared setup is opted into per module with `pytestmark = pytest.mark.usefixtures(...)`.

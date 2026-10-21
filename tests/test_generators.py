@@ -3,6 +3,8 @@
 from collections.abc import Callable
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from seachange.generators import (
     FloatMutator,
@@ -253,3 +255,75 @@ def test_swap_mutators_keep_genes_that_are_not_selected() -> None:
     """At probability 0 no gene is swapped."""
     assert IntegerMutator.swap(INT_GENES, NEVER) == INT_GENES
     assert FloatMutator.swap(GENES, NEVER) == GENES
+
+
+# ---------------------------------------------------------------------------
+# size=None returns one number; an int size returns a list
+# ---------------------------------------------------------------------------
+
+
+def test_float_generators_return_one_float_for_size_none() -> None:
+    """With size=None every float generator returns a plain float."""
+    uniform: float = FloatsGenerator.uniform(0.0, 1.0, size=None)
+    normal: float = FloatsGenerator.normal(size=None)
+    normal_positional: float = FloatsGenerator.normal(0.0, 1.0, None)
+    lognormal: float = FloatsGenerator.lognormal(size=None)
+    lognormal_positional: float = FloatsGenerator.lognormal(0.0, 1.0, None)
+    choice: float = FloatsGenerator.choice([0.5, 1.5], size=None)
+    for value in (
+        uniform,
+        normal,
+        normal_positional,
+        lognormal,
+        lognormal_positional,
+        choice,
+    ):
+        assert type(value) is float
+
+
+def test_integer_generators_return_one_int_for_size_none() -> None:
+    """With size=None every integer generator returns a plain int."""
+    drawn: int = IntegersGenerator.integers(0, INT_HIGH, size=None)
+    chosen: int = IntegersGenerator.choice([10, 20, 30], size=None)
+    assert type(drawn) is int
+    assert type(chosen) is int
+
+
+@given(
+    low=st.floats(min_value=-1e6, max_value=1e6),
+    width=st.floats(min_value=1e-3, max_value=1e6),
+)
+def test_uniform_size_none_stays_in_range(low: float, width: float) -> None:
+    """A single uniform draw lies within [low, low + width]."""
+    value = FloatsGenerator.uniform(low, low + width, size=None)
+    assert low <= value <= low + width
+
+
+@given(size=st.integers(min_value=1, max_value=50))
+def test_float_generators_return_a_list_of_the_requested_length(
+    size: int,
+) -> None:
+    """An int size gives a list of that many floats."""
+    for result in (
+        FloatsGenerator.uniform(0.0, 1.0, size=size),
+        FloatsGenerator.normal(size=size),
+        FloatsGenerator.lognormal(size=size),
+        FloatsGenerator.choice([0.5, 1.5], size=size),
+    ):
+        assert isinstance(result, list)
+        assert len(result) == size
+        assert all(type(v) is float for v in result)
+
+
+@given(size=st.integers(min_value=1, max_value=50))
+def test_integer_generators_return_a_list_of_the_requested_length(
+    size: int,
+) -> None:
+    """An int size gives a list of that many ints."""
+    for result in (
+        IntegersGenerator.integers(0, INT_HIGH, size=size),
+        IntegersGenerator.choice([10, 20, 30], size=size),
+    ):
+        assert isinstance(result, list)
+        assert len(result) == size
+        assert all(type(v) is int for v in result)

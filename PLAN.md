@@ -9,7 +9,7 @@ Order (approved 2026-10-21): 1 to 5 first, because they are small and fix or pin
 | # | Name | Goal | Kind | Success measure | Status | Added |
 |---|---|---|---|---|---|---|
 | 1 | restart-guard | Done 2026-10-21 by T5: `EA` raises `ValueError` when the restart source and the target database are the same file, in both `db_handling` modes, before opening either. | new behaviour | met: 3 new tests in `tests/test_ea_restart.py`; the 10 existing restart tests pass unchanged | done 2026-10-21 | 2026-10-21 |
-| 2 | floats-size-none | `FloatsGenerator.uniform`, `normal` and `lognormal` with `size=None` return one plain `float`, as numpy does. | new behaviour | Hypothesis tests show each of the three returns a `float` for `size=None` and a list of the requested length otherwise. The three `known bug` ignores are gone and `ty check` reports 0 diagnostics. | approved 2026-10-21 | 2026-10-21 |
+| 2 | floats-size-none | Done 2026-10-21 by T6: the float generators return a plain `float` for `size=None`, and typing overloads on all six generators say so. | new behaviour | met: 5 new tests in `tests/test_generators.py` (3 with Hypothesis); `known bug` ignores removed; `ty check` 0 diagnostics | done 2026-10-21 | 2026-10-21 |
 | 3 | docs-build | Done 2026-10-21 by T1 (`sphinx.ext.todo` loaded); the `docs.yml` command exits 0. | improvement, behaviour unchanged | met | done 2026-10-21 | 2026-10-21 |
 | 4 | examples-tested | Done 2026-10-21 by T4: `tests/test_examples.py` runs `examples/a1_one_max.py` and checks `best fitness 20.0 of 20`; the empty `a0_hello_world.py` was deleted. | improvement, behaviour unchanged | met | done 2026-10-21 | 2026-10-21 |
 | 5 | close-connections | The engine and tests close every SQLite connection they open. | improvement, behaviour unchanged | Corrected 2026-10-21, needs re-approval: `pytest` with `-W error::ResourceWarning -W error::pytest.PytestUnraisableExceptionWarning` passes every test (now set in `pytest.ini`). The approved measure, `-W error::ResourceWarning` alone, passed even before the fix: a leak found during garbage collection reaches pytest as `PytestUnraisableExceptionWarning`. | done 2026-10-21 by T2 and T3, measure awaiting re-approval | 2026-10-21 |
@@ -22,11 +22,11 @@ Non-goals until 0.1: robot genotypes, databases other than SQLite.
 
 ## Current state
 
-Phase: planning. The engine, generators and optimizers are copied from ARIEL with their tests. All seven goals are approved, and the specs for goals 1 to 5 and 7 are in DESIGN.md. Next step: the user approves the task list.
+Phase: Tier 1 done (goals 1 to 5, tasks T1 to T6, on branch `tier1-fixes`). Goal 5's corrected measure awaits re-approval. Next step: T7, the interface audit for goal 6.
 
 ## Baseline
 
-2026-10-21, rechecked on branch `setup-audit`: ruff format and check pass (33 files), mypy passes (34 files), pytest 187 passed at 100% branch coverage in ~1 s with 79 warnings, pre-commit passes, ty 3 diagnostics, the Sphinx docs build fails (fixed since by T1). ty: see Known problems.
+2026-10-21, rechecked on branch `setup-audit`: ruff format and check pass (33 files), mypy passes (34 files), pytest 187 passed at 100% branch coverage in ~1 s with 79 warnings, pre-commit passes, ty 3 diagnostics, the Sphinx docs build fails (fixed since by T1). ty's 3 diagnostics are fixed since by T6.
 
 Goal measurements, 2026-10-21, Linux (host `johnny-dm`), Python 3.13, uv 0.13.1:
 
@@ -40,7 +40,6 @@ Draft 2026-10-21, awaiting the user's approval. One task per commit. Every area 
 
 ### Tier 1: goals 1 to 5 (approved order: these first)
 
-- **T6 Return a number for `size=None`, with overloads** (goal 2). Files: `src/seachange/generators/sampling.py`, `tests/test_generators.py`. Hypothesis tests first: return type and length for `size=None` and for `int` sizes, on all six methods. Then add the `@overload`s and the runtime fix in the three float methods, and remove the three `known bug` ignores and their Known problems entry. Risk medium: the overloads have to satisfy mypy, pyright and ty at once, and `Floats` and `Integers` are used across `generators/` and `crossover.py`. Cost: about 60 lines, mostly overload stubs; no new dependency. Verify: the new tests, existing generator and crossover tests unchanged, mypy clean, `ty check` 0 diagnostics.
 
 ### Tier 2: goals 6 and 7 (after Tier 1)
 
@@ -63,6 +62,5 @@ Draft 2026-10-21, awaiting the user's approval. One task per commit. Every area 
 
 ## Known problems
 
-- `FloatsGenerator.uniform`, `normal` and `lognormal` crash with `AttributeError: 'float' object has no attribute 'tolist'` when `size=None` (`src/seachange/generators/sampling.py`). numpy returns a plain float there. ARIEL has the same bug. The lines carry `# type: ignore[union-attr]  # known bug`, and ty reports them (3 diagnostics).
 - Importing `seachange.optimizers.revde` creates `__data__/` in the working directory (module-level `mkdir`), copied as is.
 - `uv-cr-lib`'s template `tools/run_notebooks.py` fails mypy until `nbclient`, `nbformat` and `ipykernel` are installed; they are in the dev group here.

@@ -25,7 +25,8 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 
 ### Goal 4: examples-tested
 
-- `tests/test_examples.py` runs each file in `examples/` with `runpy`, with the working directory set to a temporary folder.
+- `tests/test_examples.py` runs each example in a fresh interpreter (`subprocess`, `sys.executable`) with a temporary folder as the working directory. Not `runpy`: inside the suite the shared generator's state depends on earlier tests, and `config.output_folder` is fixed to the working directory when `seachange` is imported, so an in-process run could vary and would write to the repo's `__data__/`.
+- `examples/a0_hello_world.py`, the empty `uv-cr-lib` template, is deleted (user, 2026-10-21).
 - Acceptance: `a1_one_max.py` prints `best fitness 20.0 of 20` (deterministic: the generators use the fixed `SEED`). Coverage stays at 100%.
 
 ### Goal 5: close-connections
@@ -68,6 +69,7 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 | 2026-10-21 | T1 | 3 | `docs/conf.py` loads `sphinx.ext.todo` | docs build with `-W`: 1 error before, 0 after (exit 0) |
 | 2026-10-21 | T2 | 5 | `EA.__init__` disposes the restart source engine, also on its error paths | `test_ea_restart.py` alone, `-W default`: 11 warnings before, 10 after; full suite 79 before, 77 after |
 | 2026-10-21 | T3 | 5 | `dispose_engines` fixture in `tests/conftest.py`, opted into by three test modules; one test disposes its own engine; `pytest.ini` fails on leaks | full suite: 77 warnings before, 0 after (3 runs); with the leak put back the suite fails |
+| 2026-10-21 | T4 | 4 | `tests/test_examples.py` runs the one-max example; `a0_hello_world.py` deleted | 187 tests before, 188 after, suite ~0.8 s to ~1.3 s; the test fails when the example runs 1 generation |
 
 ## Gotchas
 

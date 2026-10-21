@@ -16,5 +16,6 @@ $ uv add <package>
 :maxdepth: 2
 :caption: Contents
 
+genotypes
 reference
 ```

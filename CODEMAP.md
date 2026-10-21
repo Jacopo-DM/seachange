@@ -1,6 +1,6 @@
 # Code map
 
-Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the README example); `examples/a2_revde.py` prints one RevDE mutation. Generated paths are in the ignore list in CLAUDE.md.
+Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the README example); `examples/a2_revde.py` prints one RevDE mutation; `examples/a3_numpy_genotypes.py` evolves float32 array genotypes with typed operations and reads the best back through `Archive[Weights]` (included in `docs/genotypes.md`). Generated paths are in the ignore list in CLAUDE.md.
 
 ## `src/seachange/`
 
@@ -33,4 +33,4 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 
 ## `docs/`, `tools/`, `.github/`
 
-`docs/` is the Sphinx site (`conf.py`, `index.md`, `reference.md`). `tools/compress_images.py` and `tools/run_notebooks.py` are the shared templates the pre-commit hooks run. `tools/bench_genotypes.py` is goal 8's benchmark: seconds of database work per generation and database size for 100 genotypes of 10,000 weights. `.github/workflows/ci.yml` runs format, lint, mypy and pytest; `docs.yml` builds the docs.
+`docs/` is the Sphinx site (`conf.py`, `index.md`, `genotypes.md` on how genotypes are stored and typed, `reference.md`). `tools/compress_images.py` and `tools/run_notebooks.py` are the shared templates the pre-commit hooks run. `tools/bench_genotypes.py` is goal 8's benchmark: seconds of database work per generation and database size for 100 genotypes of 10,000 weights. `.github/workflows/ci.yml` runs format, lint, mypy and pytest; `docs.yml` builds the docs.

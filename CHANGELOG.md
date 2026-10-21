@@ -8,6 +8,8 @@ The first release. seachange starts as a copy of ARIEL's `ariel.ec` engine, take
 
 Import from `seachange` instead of `ariel.ec`: `from seachange import EA, Population` where you wrote `from ariel.ec import EA, Population`. `RevDE` is in `seachange.optimizers.revde`. ARIEL's robot genotypes (tree, CPPN, NDE) are not part of seachange.
 
+Databases that `ariel.ec` wrote open in seachange's `Archive` and `EA.restart` as they are. Genotypes no longer need to be JSON: where ARIEL code wrote `individual.genotype = weights.tolist()`, assign the array, and it comes back as an array. Mutate a numpy genotype into a new array (`child.genotype = parent.genotype + noise`), as seachange makes an assigned array read-only. To type genotypes, annotate operations with `Population[NDArray[np.float32]]` (see the genotype types entry under Changed). [docs/genotypes.md](docs/genotypes.md) has the details.
+
 ### Added
 
 - `EA.close()` and `Archive.close()` release the database connection, and both work as context managers: `with EA(...) as ea:` and `with Archive(path) as archive:`.

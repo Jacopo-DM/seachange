@@ -91,6 +91,10 @@ ea = EA.restart(
 
 Without `db_file_path`, the new run would write to the default `__data__/database.db`, the file you are restarting from, so `EA.restart` raises `ValueError` instead of overwriting it. Pass `generation=` to continue from an earlier generation.
 
+## Genotypes
+
+A genotype can be a list or dict of JSON values, or a numpy array, which comes back from the database as the same array, dtype and shape included, and is stored as raw bytes. Other types, such as PyTorch tensors, need a small codec registered with `register_codec`. [docs/genotypes.md](docs/genotypes.md) explains how genotypes are stored and typed, and [examples/a3_numpy_genotypes.py](examples/a3_numpy_genotypes.py) evolves float32 weights.
+
 ## License
 
 GPL-3.0-or-later, the same as ARIEL, which seachange's code comes from. See [LICENSE](LICENSE).

@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 
 EXAMPLES = Path(__file__).parent.parent / "examples"
+# The numpy example must cut its error by at least a third
+ERROR_KEPT_AT_MOST = 2 / 3
 
 
 def test_one_max_finds_all_ones(tmp_path: Path) -> None:
@@ -41,3 +43,23 @@ def test_revde_demo_prints_three_children(tmp_path: Path) -> None:
         "child 1",
         "child 2",
     ]
+
+
+def test_numpy_example_lowers_the_error_and_keeps_float32(
+    tmp_path: Path,
+) -> None:
+    """The numpy example improves and reads its genotype back as float32."""
+    result = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]  # fixed argv, no outside input
+        [sys.executable, str(EXAMPLES / "a3_numpy_genotypes.py")],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    lines = result.stdout.splitlines()
+    # "error 1.274 -> 0.804" on Linux; compared loosely, as float32 sums
+    # may differ in the last bits on other platforms
+    start, end = (float(word) for word in lines[-2].split()[1::2])
+    assert end < start * ERROR_KEPT_AT_MOST
+    assert lines[-1] == "stored genotype: float32 (100,)"
+    assert (tmp_path / "__data__" / "numpy.db").exists()

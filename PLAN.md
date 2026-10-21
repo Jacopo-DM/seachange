@@ -40,6 +40,7 @@ Approved 2026-10-21. One task per commit.
 
 ### Tier 2: goal 7
 
+- **T24 Restart with the survivors only** (approved 2026-10-21 during housekeeping). Files: `src/seachange/ea.py` (`EA.restart`), `tests/test_ea_restart.py`. The query becomes `time_of_birth <= g` and (`time_of_death > g` or `alive`), so an individual retired in generation `g` stays out. Test first: one-max-shaped run, restart from its last generation, expect 20 not 30. Risk low, about 5 lines; it is a behaviour change from ARIEL, so it gets a Results row for the CHANGELOG. Estimate 20 min. Do it before T9 so the CHANGELOG includes it.
 - **T9 Write `CHANGELOG.md`** (goal 7). After goal 6. It lists every change from `ariel.ec` (goals 1, 2 and 6), each with the old call and the new one. Risk low. Verify: every behaviour change recorded in DESIGN.md has a line.
 - **T10 Build-and-install check** (goal 7). Files: `CLAUDE.md` (the commands). Run `uv build`, then `uv run --isolated --with dist/<wheel> python <README example>` in a temporary folder, and record the commands with their output. Risk low. Verify: it prints `best fitness 20.0 of 20`.
 
@@ -55,4 +56,4 @@ Approved 2026-10-21. One task per commit.
 
 ## Known problems
 
-- A restart also takes the individuals retired during the chosen generation: `EA.restart` selects `time_of_birth <= g <= time_of_death`, and an individual marked dead in generation `g` still has `time_of_death == g`. On one-max (20 kept alive, 10 retired per generation) a restart from generation 50 starts with 30. Found 2026-10-21 while checking T23; the query is as copied from ARIEL. Not changed without the user's approval.
+- A restart also takes the individuals retired during the chosen generation: `EA.restart` selects `time_of_birth <= g <= time_of_death`, and an individual marked dead in generation `g` still has `time_of_death == g`. On one-max (20 kept alive, 10 retired per generation) a restart from generation 50 starts with 30. Found 2026-10-21 while checking T23; the query is as copied from ARIEL. On 2026-10-21 the user chose to restart with only the individuals still alive at the end of the generation: task T24.

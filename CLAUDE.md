@@ -46,7 +46,7 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 
 ## Data and secrets
 
-- `EASettings.output_folder` makes a run write `__data__/` under the current working directory (git-ignored). No keys or environment variables are needed; `EASettings` and the generator settings read overrides from environment variables prefixed `SEACHANGE_` (for example `SEACHANGE_NUM_STEPS`).
+- `EASettings.output_folder` makes a run write `__data__/` under the current working directory (git-ignored). Run examples and ad hoc scripts from a scratch folder, never the repo root: the default `db_handling="delete"` replaces an existing `__data__/database.db`, which may be one of the user's runs. No keys or environment variables are needed; `EASettings` and the generator settings read overrides from environment variables prefixed `SEACHANGE_` (for example `SEACHANGE_NUM_STEPS`).
 
 ## Ignore list
 

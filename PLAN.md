@@ -75,7 +75,6 @@ Judged fine: `EAOperation`, `Individual` (fields and the `fitness` and `genotype
 
 Each task: tests first (watch them fail), then the change, a CHANGELOG note recorded in DESIGN.md Results for T9, and the README updated where it shows the old call. All areas have tests at 100% branch coverage. Ordered so tasks that touch the same file follow each other, and so the rename (T18) happens before `direction` becomes required (T19).
 
-- **T16 C5: `close()` and `with`.** Files: `ea.py`, `archive.py`, tests. `close()` disposes the engine; `__enter__` returns the object and `__exit__` calls `close()`. Tests: after `with`, the pool holds no connection and the `pytest.ini` filter stays green. Risk low. Cost: about 25 lines, 1 new idea for users.
 - **T17 C3: drop the ignored parameter.** Files: `archive.py`, tests. Risk low. Cost: 2 lines removed and one suppression gone.
 - **T18 C10: one direction word.** Files: `ea.py`, `ea_settings.py`, `population.py`, `archive.py`, `examples/a1_one_max.py`, README, tests (44 call sites). The user chose `direction: Literal["max", "min"]`, exported as `Direction`, replacing `is_maximisation`, `sort=` (on `Population`) and `fitness_mode=` (with its `FitnessMode` alias). Risk medium: wide but mechanical; mypy finds every missed caller. Cost: no new lines, many changed.
 - **T19 C2: `Archive` requires the direction.** Files: `archive.py`, `tests/test_archive.py`. The three methods lose the default. Test: omitting it is a `TypeError`; one-max's `best_individual(direction="max")` gives 20.0. Risk low. Cost: 3 defaults removed, tests updated.
@@ -97,10 +96,13 @@ Each task: tests first (watch them fail), then the change, a CHANGELOG note reco
 
 ## Open questions
 
+- Should T21 (C7) also remove the module-level traceback `install()` from `ea.py` (see Known problems)? It changes what users see when their own code raises.
 - The README was approved and merged on 2026-10-21. Its install step has a `<repository URL>` placeholder until a remote exists.
 - No remote exists. On 2026-10-21 the user deferred where to host it. Goal 7 (release-0.1) waits on the answer.
 
 ## Known problems
+
+- `src/seachange/ea.py` calls rich's `install()` at module level, so `import seachange` replaces the traceback printer for the user's whole program. Found 2026-10-21 during T16. It is the same side effect C7 removes from `revde.py`, but C7 was approved for RevDE only.
 
 - Importing `seachange.optimizers.revde` creates `__data__/` in the working directory (module-level `mkdir`), copied as is.
 - `uv-cr-lib`'s template `tools/run_notebooks.py` fails mypy until `nbclient`, `nbformat` and `ipykernel` are installed; they are in the dev group here.

@@ -2,7 +2,8 @@
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Literal, cast
+from types import TracebackType
+from typing import Literal, Self, cast
 
 from rich.console import Console
 from rich.progress import (
@@ -410,3 +411,30 @@ class EA:
                 progress.advance(task)
 
         self.console.rule("[green]EA Finished")
+
+    def close(self) -> None:
+        """Release the database connection.
+
+        The run can still be read afterwards; the next query opens a new
+        connection, which ``close`` releases again.
+        """
+        self.engine.dispose()
+
+    def __enter__(self) -> Self:
+        """Return this run, to be closed when the ``with`` block ends.
+
+        Returns
+        -------
+        Self
+            This run.
+        """
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        """Close the run when the ``with`` block ends."""
+        self.close()

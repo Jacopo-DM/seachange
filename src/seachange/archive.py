@@ -2,7 +2,8 @@
 
 import random
 from pathlib import Path
-from typing import Literal
+from types import TracebackType
+from typing import Literal, Self
 
 import numpy as np
 from sqlalchemy import Engine, create_engine, func
@@ -496,6 +497,33 @@ class Archive:
             "std": float(np.std(fitnesses)),
             "median": float(np.median(fitnesses)),
         }
+
+    def close(self) -> None:
+        """Release the database connection.
+
+        The archive can still be read afterwards; the next query opens a new
+        connection, which ``close`` releases again.
+        """
+        self.engine.dispose()
+
+    def __enter__(self) -> Self:
+        """Return this archive, to be closed when the ``with`` block ends.
+
+        Returns
+        -------
+        Self
+            This archive.
+        """
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        """Close the archive when the ``with`` block ends."""
+        self.close()
 
     def __repr__(self) -> str:
         """Return a string representation of the archive.

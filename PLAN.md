@@ -22,7 +22,7 @@ Non-goals until 0.1: robot genotypes, databases other than SQLite.
 
 ## Current state
 
-Phase: goals 1 to 6 done. Goal 7 (release) remains: T8 licence, T9 CHANGELOG, T10 build-and-install check, T11 repository URL (blocked on hosting). Next step: the user answers the open questions, then T8.
+Phase: goals 1 to 6 done; goal 7 (release) in progress. T8 (licence) is done. Left: T9 CHANGELOG, T10 build-and-install check, T11 repository URL (blocked on hosting). Next step: T9.
 
 ## Baseline
 
@@ -58,4 +58,3 @@ Approved 2026-10-21. One task per commit.
 ## Known problems
 
 - A restart also takes the individuals retired during the chosen generation: `EA.restart` selects `time_of_birth <= g <= time_of_death`, and an individual marked dead in generation `g` still has `time_of_death == g`. On one-max (20 kept alive, 10 retired per generation) a restart from generation 50 starts with 30. Found 2026-10-21 while checking T23; the query is as copied from ARIEL. Not changed without the user's approval.
-

@@ -22,7 +22,7 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 | Purpose | Command | Checked |
 |---|---|---|
 | Install everything | `uv sync --all-groups` | passes; `--locked --dry-run` reports no changes |
-| Format | `uv run --no-sync ruff format src tests tools examples` | 45 files unchanged, <1 s |
+| Format | `uv run --no-sync ruff format .` | 56 files unchanged, <1 s; covers Python code blocks in Markdown too (`docs/*.md`), as the Stop hook's `ruff format --check` does |
 | Lint | `uv run --no-sync ruff check --no-fix .` | passes, <1 s; without `--no-fix` it rewrites files (`fix = true` in the template) |
 | Types (mypy) | `uv run --no-sync mypy .` | passes, 46 files, <1 s |
 | Types (ty, advisory) | `uv run --locked ty check` | 0 diagnostics |

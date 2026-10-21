@@ -41,6 +41,7 @@ Changing an array in place raises `ValueError: assignment destination is read-on
 ```python
 type Weights = NDArray[np.float32]
 
+
 def mutate(population: Population[Weights]) -> Population[Weights]:
     for parent in population:
         child = Individual[Weights]()

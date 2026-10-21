@@ -6,7 +6,7 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 
 ### Goal 1: restart-guard
 
-- `EA.__init__` resolves the restart source and the target database (`db_file_path`, or `config.db_file_path` when it is `None`). If both name the same file, it raises `ValueError` naming the path and suggesting `db_file_path=`, before any database is opened.
+- `EA.restart` (in `EA.__init__` until T23) resolves the restart source and the target database (`db_file_path`, or `config.db_file_path` when it is `None`). If both name the same file, it raises `ValueError` naming the path and suggesting `db_file_path=`, before any database is opened.
 - The check runs in both `db_handling` modes. In `"halt"` mode, this one case now raises `ValueError` where ARIEL raises `FileExistsError`.
 - Acceptance: `ValueError` in both modes; the source file's bytes are unchanged afterwards; a relative and an absolute path to the same file are caught.
 - Must not regress: restarts with a separate `db_file_path` (`tests/test_ea_restart.py`).
@@ -31,7 +31,7 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 
 ### Goal 5: close-connections
 
-- `EA.__init__` disposes the engine it opens on a restart source. The `dispose_engines` fixture in `tests/conftest.py` records every engine the package creates during a test and disposes them afterwards; test modules that build an `EA` or `Archive` opt in with `pytestmark`.
+- `EA.restart` (in `EA.__init__` until T23) disposes the engine it opens on the restart source. The `dispose_engines` fixture in `tests/conftest.py` records every engine the package creates during a test and disposes them afterwards; test modules that build an `EA` or `Archive` opt in with `pytestmark`.
 - Acceptance: `pytest.ini` turns `ResourceWarning` and `pytest.PytestUnraisableExceptionWarning` into errors, and every test passes. (Corrected from `-W error::ResourceWarning` alone, which could not fail; see Gotchas.)
 - A public way for users to close a run (`close()` or a context manager) is a goal 6 candidate, not part of this goal.
 

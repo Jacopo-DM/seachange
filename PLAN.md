@@ -12,7 +12,7 @@ Order (approved 2026-10-21): 1 to 5 first, because they are small and fix or pin
 | 2 | floats-size-none | Done 2026-10-21 by T6 (3f20e83): the float generators return a plain `float` for `size=None`, and typing overloads on all six generators say so. | new behaviour | met: 5 new tests in `tests/test_generators.py` (3 with Hypothesis); `known bug` ignores removed; `ty check` 0 diagnostics | done 2026-10-21 | 2026-10-21 |
 | 3 | docs-build | Done 2026-10-21 by T1 (49f8351) (`sphinx.ext.todo` loaded); the `docs.yml` command exits 0. | improvement, behaviour unchanged | met | done 2026-10-21 | 2026-10-21 |
 | 4 | examples-tested | Done 2026-10-21 by T4 (e424d6b): `tests/test_examples.py` runs `examples/a1_one_max.py` and checks `best fitness 20.0 of 20`; the empty `a0_hello_world.py` was deleted. | improvement, behaviour unchanged | met | done 2026-10-21 | 2026-10-21 |
-| 5 | close-connections | The engine and tests close every SQLite connection they open. | improvement, behaviour unchanged | Corrected 2026-10-21, needs re-approval: `pytest` with `-W error::ResourceWarning -W error::pytest.PytestUnraisableExceptionWarning` passes every test (now set in `pytest.ini`). The approved measure, `-W error::ResourceWarning` alone, passed even before the fix: a leak found during garbage collection reaches pytest as `PytestUnraisableExceptionWarning`. | done 2026-10-21 by T2 and T3 (dd77424, d621b85), measure awaiting re-approval | 2026-10-21 |
+| 5 | close-connections | The engine and tests close every SQLite connection they open. | improvement, behaviour unchanged | Corrected and re-approved 2026-10-21: `pytest` with `-W error::ResourceWarning -W error::pytest.PytestUnraisableExceptionWarning` passes every test (now set in `pytest.ini`). The approved measure, `-W error::ResourceWarning` alone, passed even before the fix: a leak found during garbage collection reaches pytest as `PytestUnraisableExceptionWarning`. | done 2026-10-21 by T2 and T3 (dd77424, d621b85) | 2026-10-21 |
 | 6 | api-cleanup | The public interface is reviewed before 0.1, and each change the user approves is made and recorded for ARIEL's later switch. | new behaviour | Claude writes the candidate list (each with the call before and after, and why). Every approved change has a test and a line in a migration note that maps the `ariel.ec` name to the seachange name. Rejected candidates go to DESIGN.md. | approved 2026-10-21 | 2026-10-21 |
 | 7 | release-0.1 | seachange 0.1.0 is ready for the user to publish on PyPI. | new behaviour | `uv build` makes a wheel and an sdist. A fresh temporary environment installs the wheel and runs the README example, which prints `best fitness 20.0 of 20`. Goal 3 passes, the README has no placeholders, and a CHANGELOG lists the changes from `ariel.ec`. Blocked until the hosting question is answered. | approved 2026-10-21 | 2026-10-21 |
 
@@ -22,7 +22,7 @@ Non-goals until 0.1: robot genotypes, databases other than SQLite.
 
 ## Current state
 
-Phase: Tier 1 done (goals 1 to 5, tasks T1 to T6, on branch `tier1-fixes`). Goal 5's corrected measure awaits re-approval. Next step: T7, the interface audit for goal 6.
+Phase: Tier 1 done (goals 1 to 5, tasks T1 to T6, on branch `tier1-fixes`). Next step: T7, the interface audit for goal 6.
 
 ## Baseline
 
@@ -43,7 +43,32 @@ Draft 2026-10-21, awaiting the user's approval. One task per commit. Every area 
 
 ### Tier 2: goals 6 and 7 (after Tier 1)
 
-- **T7 Audit the public interface** (goal 6). Files: none changed. Write a candidate list into this file: each candidate shows the call before and after and gives the reason. The engine-closing candidate from goal 5 is on it. You approve the candidates one by one; each approved change becomes its own task, approved separately. Risk none. Verify: every name exported from `seachange/__init__.py` is either on the list or judged fine.
+- **T7 Audit the public interface** (goal 6). Done 2026-10-21; the candidates are below, each awaiting the user's yes or no. Each approved candidate becomes its own task.
+
+#### Goal 6 candidates (from T7)
+
+Correctness hazards:
+
+- **C1 Prefix the environment variables.** Before: `NUM_STEPS=7` or `QUIET=true` in the shell changes every run (checked: `config.num_steps` was 7). After: only `SEACHANGE_NUM_STEPS` and the like are read, and the generator settings get the same prefix. Why: an unrelated variable such as `QUIET` or `NUM_STEPS` from another tool silently changes results. Files: `ea_settings.py`, `generators/_shared.py`.
+- **C2 Make `Archive` take the fitness direction explicitly.** Before: `archive.best_individual()` defaults to `fitness_mode="min"`, while `EA` and `Population` default to maximising; on the one-max run it returned fitness 7.0, not 20.0 (checked). After: `best_individual`, `hall_of_fame` and `tournament_population` require `fitness_mode=`. Why: the default gives the wrong answer for the engine's own default. The alternative is a default of `"max"`, which fixes one-max but leaves minimisation users with the same silent trap.
+- **C3 Drop the ignored `fitness_mode` from `fitness_percentile_population`.** Before: the parameter is accepted and ignored (a `ruff: ignore[unused-method-argument]` marks it). After: the parameter is gone. Why: a caller who passes `"max"` believes it changes the result.
+- **C4 Raise on an unknown `get_solution` mode.** Before: `ea.get_solution("bset")` returns `None` despite the `Individual` return type (a test pins this). After: `ValueError`. Why: a typo fails later, far from its cause.
+
+Missing capabilities:
+
+- **C5 Close a run.** Before: `ea.engine.dispose()`, which is undocumented. After: `ea.close()` and `with EA(...) as ea:`, and the same for `Archive`. Why: a long script that opens many runs leaks one SQLite connection per run (goal 5 found this in the tests).
+- **C6 Reseed the generators.** Before: everything draws from one generator seeded with 42 at import; `SEED` is exported, but changing it does nothing, and there is no supported way to run with another seed. After: `seachange.seed(123)` reseeds the shared generator in place. Why: researchers repeat runs over several seeds.
+- **C7 Remove RevDE's import side effects.** Before: `import seachange.optimizers.revde` creates `__data__/` in the working directory, installs rich's traceback handler for the whole program, and keeps its own generator seeded with 42. After: no module-level setup. `RevDE` draws from the shared generator, so C6 covers it, and the `main()` demo moves to `examples/`. Why: importing a library should not change the user's program or folders. This clears a Known problem.
+- **C8 Decide the output folder when the run starts.** Before: `output_folder` defaults to `Path.cwd() / "__data__"` as computed at import, so a script that changes directory afterwards still writes to the old folder. After: the default is computed when `EA` is created. Why: it surprises in notebooks and test runners; goal 4's test had to work around it.
+
+Cleanups:
+
+- **C9 Remove `target_population_size`.** Before: `EASettings` has it and `EA` stores it, but nothing reads it. After: it is gone. Why: users set it and expect the engine to hold the population at that size.
+- **C10 One word for the fitness direction.** Before: `EA(is_maximisation=True)`, `population.sort(sort="max")`, `archive.best_individual(fitness_mode="max")`. After: one name everywhere, for example `direction="max"`. Why: three names for one idea. Cost: a rename across every caller in ARIEL. My lean is no: the churn buys only consistency.
+- **C11 Make `tags =` replace instead of merge.** Before: `ind.tags = {"a": 1}` keeps the existing keys (documented). After: assignment replaces, and `ind.tags.update(...)` merges. Why: assignment that merges surprises. My lean is no: ARIEL code may rely on the merge, and the docstring says so.
+- **C12 Make `operations` required.** Before: `EA(population=None, operations=None)`, where `operations=None` raises `ValueError`. After: `operations` has no default. Why: the type would show it is required. Cost: `population` comes first and is optional, so the arguments must be reordered or made keyword-only, which breaks every positional call, including the README's. My lean is no.
+
+Judged fine: `EAOperation`, `Individual` (fields and the `fitness` and `genotype` properties), `Population` (apart from C10), `Crossover`, `FloatMutator`, `IntegerMutator`, `FloatsGenerator`, `IntegersGenerator`, `Floats`, `Integers`, `JSONType`, `JSONPrimitive`, `JSONIterable`, `DBHandlingMode`, `EASettings` (apart from C1, C8 and C9), `config`, `Archive.random_individual`, `random_population`, `by_generation`, `fitness_stats`, `size` and `generation_range`.
 - **T8 Add the licence** (goal 7). Files: new `LICENSE` (copied from ARIEL), `pyproject.toml` (`license = "GPL-3.0-or-later"`, plus `license-files`). Risk low. Cost: 2 lines and one file. Verify: `uv build` puts the licence in the wheel's metadata.
 - **T9 Write `CHANGELOG.md`** (goal 7). After goal 6. It lists every change from `ariel.ec` (goals 1, 2 and 6), each with the old call and the new one. Risk low. Verify: every behaviour change recorded in DESIGN.md has a line.
 - **T10 Build-and-install check** (goal 7). Files: `CLAUDE.md` (the commands). Run `uv build`, then `uv run --isolated --with dist/<wheel> python <README example>` in a temporary folder, and record the commands with their output. Risk low. Verify: it prints `best fitness 20.0 of 20`.

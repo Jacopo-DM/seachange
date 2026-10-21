@@ -52,6 +52,7 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 - 2026-10-21: the licence is GPL-3.0-or-later, as ARIEL, because the code is copied from ARIEL and relicensing needs every copyright holder's consent (user).
 - 2026-10-21: restarting onto the source file raises `ValueError` in every `db_handling` mode (user). One rule with one message beats keeping halt's generic `FileExistsError` for this case.
 - 2026-10-21: `size=None` returns a plain number, matching numpy, with typing overloads so a default `size=1` caller still gets a sequence type (user). The integer generators get the same overloads.
+- 2026-10-21: the fitness direction has one name everywhere, `direction: Literal["max", "min"]` (user, goal 6 C10). A boolean `maximise=` was rejected: `sort(maximise=False)` reads as "do not maximise" rather than "ascending".
 - 2026-10-21: the docs build fixes the `Todo` directive by loading `sphinx.ext.todo`, not by deleting the empty template sections (user).
 
 ## Rejected approaches

@@ -75,7 +75,6 @@ Judged fine: `EAOperation`, `Individual` (fields and the `fitness` and `genotype
 
 Each task: tests first (watch them fail), then the change, a CHANGELOG note recorded in DESIGN.md Results for T9, and the README updated where it shows the old call. All areas have tests at 100% branch coverage. Ordered so tasks that touch the same file follow each other, and so the rename (T18) happens before `direction` becomes required (T19).
 
-- **T12 C1: env prefix.** Files: `ea_settings.py`, `generators/_shared.py`, `tests/test_ea_operation.py`. Add `model_config = SettingsConfigDict(env_prefix="SEACHANGE_")` to both settings classes. Test: `NUM_STEPS` is ignored and `SEACHANGE_NUM_STEPS` is read. Risk low. Cost: 4 lines.
 - **T13 C9: remove `target_population_size`.** Files: `ea_settings.py`, `ea.py`, `tests/test_ea_operation.py`. Risk low (nothing reads it). Cost: about 5 lines removed.
 - **T14 C8: output folder at run start.** Files: `ea_settings.py`, `ea.py`. `output_folder` defaults to `None`, meaning the working directory's `__data__/` at the moment `EA(...)` is created. Test: change directory after import; the run lands in the new folder. Risk medium: `db_file_path` is a computed field on the settings, so it moves to `EA`. Cost: about 15 lines.
 - **T15 C4: unknown `get_solution` mode raises.** Files: `ea.py`, `tests/test_ea_restart.py` (the test that pins `None` changes to expect `ValueError`). Risk low. Cost: 3 lines.

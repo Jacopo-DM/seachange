@@ -26,7 +26,7 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 | Lint | `uv run --no-sync ruff check --no-fix .` | passes, <1 s; without `--no-fix` it rewrites files (`fix = true` in the template) |
 | Types (mypy) | `uv run --no-sync mypy .` | passes, 34 files, <1 s |
 | Types (ty, advisory) | `uv run --locked ty check` | 0 diagnostics |
-| Tests | `uv run --no-sync pytest -q` | 196 passed, 100% branch coverage, ~1.7 s; no warnings; `pytest.ini` turns a leaked SQLite connection into a failure |
+| Tests | `uv run --no-sync pytest -q` | 199 passed, 100% branch coverage, ~1.7 s; no warnings; `pytest.ini` turns a leaked SQLite connection into a failure |
 | Docs | `uv run --no-sync sphinx-build -W --keep-going -b html docs docs/_build/html` | passes, ~2 s; same command as `docs.yml` |
 | Pre-commit | `uv run --no-sync pre-commit run --all-files` | passes, <1 s; image and notebook hooks skip (no files) |
 
@@ -42,7 +42,7 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 
 ## Data and secrets
 
-- `EASettings.output_folder` and importing `seachange.optimizers.revde` write `__data__/` under the current working directory (git-ignored). No keys or environment variables are needed; `EASettings` reads overrides from the environment through pydantic-settings.
+- `EASettings.output_folder` and importing `seachange.optimizers.revde` write `__data__/` under the current working directory (git-ignored). No keys or environment variables are needed; `EASettings` and the generator settings read overrides from environment variables prefixed `SEACHANGE_` (for example `SEACHANGE_NUM_STEPS`).
 
 ## Ignore list
 

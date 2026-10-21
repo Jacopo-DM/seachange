@@ -52,6 +52,25 @@ def test_easettings_override() -> None:
     assert s.quiet is True
 
 
+def test_easettings_ignores_unprefixed_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A bare NUM_STEPS from another tool does not change the engine."""
+    monkeypatch.setenv("NUM_STEPS", str(CUSTOM_NUM_STEPS))
+    monkeypatch.setenv("QUIET", "true")
+    s = EASettings()
+    assert s.num_steps == DEFAULT_NUM_STEPS
+    assert s.quiet is False
+
+
+def test_easettings_reads_prefixed_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """SEACHANGE_ variables override the defaults."""
+    monkeypatch.setenv("SEACHANGE_NUM_STEPS", str(CUSTOM_NUM_STEPS))
+    assert EASettings().num_steps == CUSTOM_NUM_STEPS
+
+
 def test_eaoperation_valid_decoration() -> None:
     """@EAOperation on a valid function returns an EAOperation."""
     assert isinstance(noop, EAOperation)

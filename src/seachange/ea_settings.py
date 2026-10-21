@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic import computed_field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 type DBHandlingMode = Literal["delete", "halt"]
 
@@ -16,8 +16,9 @@ class EASettings(BaseSettings):
     """
     Global configuration for the EA engine.
 
-    Consumed by both ``EA`` and ``EAOperation``. Values can be overridden via
-    environment variables or a ``.env`` file thanks to ``pydantic-settings``.
+    Consumed by both ``EA`` and ``EAOperation``. Each field can be overridden
+    by an environment variable named ``SEACHANGE_`` plus the field name, for
+    example ``SEACHANGE_NUM_STEPS=50``.
 
     Parameters
     ----------
@@ -51,6 +52,8 @@ class EASettings(BaseSettings):
 
         Default is ``"delete"``.
     """
+
+    model_config = SettingsConfigDict(env_prefix="SEACHANGE_")
 
     quiet: bool = False
     is_maximisation: bool = True

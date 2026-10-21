@@ -4,7 +4,7 @@ from collections.abc import Sequence
 
 import numpy as np
 from numpy.random import Generator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 UNIFORM_MEDIAN = 0.5
 
@@ -24,6 +24,10 @@ class _GeneratorSettings(BaseSettings):
     """
     Internal configuration for generator and mutator defaults.
 
+    Each field can be overridden by an environment variable named
+    ``SEACHANGE_`` plus the field name, for example
+    ``SEACHANGE_CHOICE_SHUFFLE=true``.
+
     Parameters
     ----------
     integers_endpoint : bool, optional
@@ -36,6 +40,8 @@ class _GeneratorSettings(BaseSettings):
         Whether the output of ``IntegersGenerator.choice`` is shuffled
         by default. Default is ``False``.
     """
+
+    model_config = SettingsConfigDict(env_prefix="SEACHANGE_")
 
     integers_endpoint: bool = True
     choice_replace: bool = True

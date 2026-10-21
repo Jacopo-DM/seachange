@@ -12,6 +12,7 @@ from seachange.generators import (
     IntegerMutator,
     IntegersGenerator,
 )
+from seachange.generators._shared import settings  # ruff: ignore[import-private-name]  # tests the internal generator settings
 
 NUM_INTS = 5
 INT_HIGH = 10
@@ -327,3 +328,14 @@ def test_integer_generators_return_a_list_of_the_requested_length(
         assert isinstance(result, list)
         assert len(result) == size
         assert all(type(v) is int for v in result)
+
+
+def test_generator_settings_read_only_prefixed_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CHOICE_SHUFFLE is ignored; SEACHANGE_CHOICE_SHUFFLE is read."""
+    generator_settings = type(settings)
+    monkeypatch.setenv("CHOICE_SHUFFLE", "true")
+    assert generator_settings().choice_shuffle is False
+    monkeypatch.setenv("SEACHANGE_CHOICE_SHUFFLE", "true")
+    assert generator_settings().choice_shuffle is True

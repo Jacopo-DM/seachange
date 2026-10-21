@@ -48,6 +48,7 @@ Import from `seachange` instead of `ariel.ec`: `from seachange import EA, Popula
 
 ### Fixed
 
+- Reading an individual right after `EA(...)`, as in `ea.population[0].genotype`, raised `DetachedInstanceError` until `ea.fetch_population()` ran; the saved individuals now keep their values.
 - `FloatsGenerator.uniform`, `normal` and `lognormal` with `size=None` crashed with `AttributeError`; they return one `float`, as numpy does. Typing overloads on every generator say that `size=None` gives one number and an `int` size gives a list.
 - A restart whose new database was its own source deleted the run it restarted from. `EA.restart` now raises `ValueError` before opening either file.
 - A restart left its source database's connection open; it is now closed once the rows are read.

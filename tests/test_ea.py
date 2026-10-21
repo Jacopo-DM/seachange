@@ -272,3 +272,12 @@ def test_importing_seachange_leaves_the_traceback_printer_alone(
         cwd=tmp_path,
         check=True,
     )
+
+
+def test_population_is_readable_right_after_creation(tmp_path: Path) -> None:
+    """Saving the first generation keeps each individual's values."""
+    ea = make_ea(tmp_path)
+    first = ea.population[0]
+    assert first.genotype == make_pop()[0].genotype
+    assert first.time_of_birth == 0
+    assert first.id is not None

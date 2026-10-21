@@ -268,8 +268,11 @@ class EA:
             ``time_of_birth == -1``).
         - Updates ``time_of_death`` to ``current_generation``, reflecting the
             last generation in which the individual was present.
+
+        The individuals keep their values in memory after the commit, so
+        ``self.population`` stays readable once the session closes.
         """
-        with Session(self.engine) as session:
+        with Session(self.engine, expire_on_commit=False) as session:
             for ind in self.population:
                 if ind.time_of_birth == -1:
                     ind.time_of_birth = self.current_generation

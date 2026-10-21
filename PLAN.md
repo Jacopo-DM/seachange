@@ -53,5 +53,4 @@ None.
 
 ## Known problems
 
-- Right after `EA(...)`, `ea.population` holds rows the database session has already expired, so reading a field such as `ea.population[0].genotype` raises `DetachedInstanceError`. `step()` refetches before it uses them, so runs work; a caller has to call `ea.fetch_population()` first. Found 2026-10-21 while writing the round-trip test; existing behaviour, not changed.
 - The JSON type aliases promise more than a JSON column keeps: `JSONIterable` allows a tuple, which comes back as a list, and `dict[Hashable, ...]` allows non-string keys, which come back as strings (`{1: "a"}` returns as `{"1": "a"}`). Checked 2026-10-21. Fixing it means narrowing the aliases to lists and string keys (a typing change) or validating on save; not changed without the user's approval.

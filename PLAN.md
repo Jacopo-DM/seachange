@@ -48,7 +48,7 @@ Approved 2026-10-21. One task per commit.
 ### Tier 3: listed, not planned
 
 - Typing a `Sequence[int]` size (a numpy shape, which gives nested lists) correctly. No caller in this repo uses it, and goal 2 does not need it.
-- Porting the goal 1 and goal 2 fixes back to ARIEL's copy. That is work in the ARIEL repo, and it ends anyway when ARIEL switches to seachange.
+- Porting fixes back to ARIEL's copy: done in the ARIEL repo on 2026-10-21 for goal 1 (T5), goal 2 (T6) and the restart engine disposal (T2), ARIEL commits 6d8797d, 462f7af and a29589b on its `main` (not pushed). The goal 6 interface changes are not ported; ARIEL takes them when it switches to seachange.
 - Measuring `-W default` warnings in user runs, outside the tests. Goal 5's measure covers the tests only. Users close a run with `close()` or `with` (T16).
 
 ## Open questions

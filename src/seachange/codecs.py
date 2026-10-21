@@ -9,27 +9,42 @@ of its genotypes with one codec. seachange ships two:
     numpy arrays, as numpy's own ``.npy`` format: dtype and shape in a short
     header, then the raw values. Lossless; any numpy reads it back.
 
-A run picks its codec from its first genotype with ``codec_for``: it asks
-each automatic codec whether it ``handles`` that genotype, newest
-registered first, and falls back to ``JsonCodec``. ``register_codec`` adds
-an automatic codec, for example one for PyTorch tensors.
+Each genotype picks its codec with ``codec_for``: it asks each automatic
+codec whether it ``handles`` that genotype, newest registered first, and
+falls back to ``JsonCodec``. ``register_codec`` adds an automatic codec, for
+example one for PyTorch tensors.
+
+``GenotypeColumn`` is the database column type that uses them: it stores
+the codec's name, a zero byte, then the codec's bytes, and on reading picks
+the codec by that name.
 """
 
 import io
 import json
-from typing import Protocol
+from collections.abc import Hashable, Sequence
+from typing import Protocol, override
 
 import numpy as np
 from numpy.lib import format as npy_format
 from numpy.typing import NDArray
 from pydantic import TypeAdapter, ValidationError
+from sqlalchemy import Dialect, LargeBinary
+from sqlalchemy.types import TypeDecorator
 
-from seachange.individual import JSONIterable
+from seachange.model import Model
+
+type JSONPrimitive = str | int | float | bool
+type JSONType = JSONPrimitive | Sequence[JSONType] | dict[Hashable, JSONType]
+type JSONIterable = Sequence[JSONType] | dict[Hashable, JSONType]
 
 _JSON_GENOTYPE: TypeAdapter[JSONIterable] = TypeAdapter(JSONIterable)
 
 # Any numpy array; numpy.generic takes its item type only in the stubs
 type Array = NDArray[np.generic[object]]
+type Genotype = JSONIterable | Array
+
+# Separates the codec name from the codec's bytes in a stored genotype
+_NAME_END = b"\0"
 
 
 class GenotypeCodec(Protocol):
@@ -276,10 +291,14 @@ def register_codec(codec: GenotypeCodec) -> None:
     Raises
     ------
     ValueError
-        If a codec of the same name is already known.
+        If a codec of the same name is already known, or the name is
+        empty or holds a zero byte.
     """
     if any(known.name == codec.name for known in _automatic()):
         msg = f"a codec named {codec.name!r} is already registered"
+        raise ValueError(msg)
+    if not codec.name or _NAME_END.decode() in codec.name:
+        msg = f"a codec name must be text without a zero byte: {codec.name!r}"
         raise ValueError(msg)
     _registered.append(codec)
 
@@ -332,3 +351,110 @@ def codec_named(name: str) -> GenotypeCodec:
     known = ", ".join(repr(codec.name) for codec in _automatic())
     msg = f"no codec named {name!r}; known: {known}"
     raise ValueError(msg)
+
+
+def _decode_stored(value: object) -> object:
+    # Bytes as GenotypeColumn writes them, or JSON text from before codecs
+    if isinstance(value, str):
+        return JsonCodec.decode(value.encode())
+    if not isinstance(value, bytes):
+        msg = f"a stored genotype is bytes, not {type(value)}"
+        raise TypeError(msg)
+    name, separator, data = value.partition(_NAME_END)
+    if not separator:
+        msg = "a stored genotype starts with its codec name"
+        raise ValueError(msg)
+    return codec_named(name.decode(errors="replace")).decode(data)
+
+
+class UndecodableGenotype(Model):
+    """What a stored genotype reads as when no codec can decode it.
+
+    ``check_rows`` turns it into an error naming the database row, which
+    the column type cannot know.
+
+    Parameters
+    ----------
+    error : str
+        Why decoding failed.
+    """
+
+    error: str
+
+
+def decode_error(stored: object) -> str | None:
+    """Return why a stored genotype could not be decoded, if it could not.
+
+    Parameters
+    ----------
+    stored : object
+        ``Individual.genotype_`` as loaded.
+
+    Returns
+    -------
+    str or None
+        The decoding error, or ``None`` when ``stored`` is a genotype.
+    """
+    return stored.error if isinstance(stored, UndecodableGenotype) else None
+
+
+# Behaviour, not a record: a column type holds no data
+class GenotypeColumn(TypeDecorator[object]):
+    """Database column that stores a genotype through its codec.
+
+    Writing picks the codec with ``codec_for`` and stores its name, a zero
+    byte and its bytes. Reading picks the codec by the stored name. Text
+    (as written before codecs, by seachange or ARIEL) is read as JSON.
+    """
+
+    impl = LargeBinary
+    cache_ok = True
+
+    @override
+    def process_bind_param(
+        self, value: object | None, dialect: Dialect
+    ) -> bytes | None:
+        """Return ``value`` encoded for the database.
+
+        Parameters
+        ----------
+        value : object or None
+            A genotype, or ``None`` before one is assigned.
+        dialect : Dialect
+            The database dialect (unused).
+
+        Returns
+        -------
+        bytes or None
+            The codec name, a zero byte and the codec's bytes.
+        """
+        if value is None:
+            return None
+        codec = codec_for(value)
+        return codec.name.encode() + _NAME_END + codec.encode(value)
+
+    @override
+    def process_result_value(
+        self, value: object | None, dialect: Dialect
+    ) -> object | None:
+        """Return the genotype stored as ``value``.
+
+        Parameters
+        ----------
+        value : object or None
+            The stored bytes, or text written before codecs.
+        dialect : Dialect
+            The database dialect (unused).
+
+        Returns
+        -------
+        object or None
+            The genotype, or an ``UndecodableGenotype`` saying why there is
+            none.
+        """
+        if value is None:
+            return None
+        try:
+            return _decode_stored(value)
+        except (TypeError, ValueError) as error:
+            return UndecodableGenotype(error=str(error))

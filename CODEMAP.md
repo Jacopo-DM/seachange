@@ -11,10 +11,10 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 | `ea_operation.py` | wraps a `Population -> Population` function as a pipeline step | `Operation`, `EAOperation` |
 | `ea_settings.py` | defaults for the engine, overridable from the environment | `EASettings`, `DBHandlingMode`, `Direction`, `config` |
 | `ea_database.py` | creates the database file | `setup_database` |
-| `individual.py` | one row of the database: genotype, fitness, tags, birth and death | `Individual`, `JSONType`, `JSONPrimitive`, `JSONIterable`; `check_rows` (used by `ea` and `archive`, not exported) |
+| `individual.py` | one row of the database: genotype, fitness, tags, birth and death | `Individual`; `check_rows` (used by `ea` and `archive`, not exported) |
 | `population.py` | a list of individuals with selection helpers | `Population` |
 | `archive.py` | read-only queries over a finished run's database | `Archive`, `FitnessStats`, `GenerationRange` |
-| `codecs.py` | turn a genotype into bytes and back; pick a codec for a genotype or by its stored name | `GenotypeCodec`, `JsonCodec`, `NumpyCodec`, `register_codec`; `codec_for`, `codec_named`, `Array` (not exported) |
+| `codecs.py` | genotype types; turn a genotype into bytes and back; pick a codec for a genotype or by its stored name; the database column type that stores genotypes | `Genotype`, `JSONType`, `JSONPrimitive`, `JSONIterable`, `GenotypeCodec`, `JsonCodec`, `NumpyCodec`, `register_codec`; `codec_for`, `codec_named`, `Array`, `GenotypeColumn`, `UndecodableGenotype`, `decode_error` (not exported) |
 | `model.py` | the frozen base class for records | `Model` (internal) |
 | `crossover.py` | default crossover functions | `Crossover` |
 | `generators/` | random float and integer sequences and their mutations | `FloatsGenerator`, `IntegersGenerator`, `FloatMutator`, `IntegerMutator`, `Floats`, `Integers`, `SEED`, `seed` |
@@ -23,7 +23,7 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 
 ## Import direction
 
-`ea` → `ea_database`, `ea_operation`, `ea_settings`, `individual`, `population`. `ea_database` → `ea_settings`. `ea_operation` → `population`. `codecs` → `individual` (the JSON types). `archive` → `ea_settings`, `generators._shared`, `individual`, `model`, `population`. `population` → `ea_settings` (types only), `generators._shared`. `crossover` → `generators._shared`. `generators/*` → `generators._shared`. `optimizers` imports nothing from the package.
+`ea` → `ea_database`, `ea_operation`, `ea_settings`, `individual`, `population`. `ea_database` → `ea_settings`. `ea_operation` → `population`. `individual` → `codecs`. `codecs` → `model`. `archive` → `ea_settings`, `generators._shared`, `individual`, `model`, `population`. `population` → `ea_settings` (types only), `generators._shared`. `crossover` → `codecs` (the JSON types), `generators._shared`. `generators/*` → `generators._shared`. `optimizers` imports nothing from the package.
 
 ## `tests/`
 

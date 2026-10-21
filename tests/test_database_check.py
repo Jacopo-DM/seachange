@@ -12,7 +12,9 @@ from tests.ea_helpers import make_pop, noop
 pytestmark = pytest.mark.usefixtures("dispose_engines")
 
 
-def _run_with_a_bad_row(tmp_path: Path, column: str, value: str) -> Path:
+def _run_with_a_bad_row(
+    tmp_path: Path, column: str, value: str | bytes | int
+) -> Path:
     # A finished run whose second row was edited by another tool.
     db = tmp_path / "run.db"
     with EA(make_pop(3), [noop], db_file_path=db, quiet=True):
@@ -27,10 +29,18 @@ def _run_with_a_bad_row(tmp_path: Path, column: str, value: str) -> Path:
 
 
 @pytest.mark.parametrize(
-    ("column", "value"), [("fitness_", "high"), ("genotype_", '"oops"')]
+    ("column", "value"),
+    [
+        ("fitness_", "high"),
+        ("genotype_", '"oops"'),
+        ("genotype_", b"numpy\0not an npy file"),
+        ("genotype_", b"no codec name"),
+        ("genotype_", b"torch\0..."),
+        ("genotype_", 7),
+    ],
 )
 def test_archive_refuses_a_bad_row(
-    tmp_path: Path, column: str, value: str
+    tmp_path: Path, column: str, value: str | bytes | int
 ) -> None:
     """Both ways Archive loads rows name the bad row."""
     db = _run_with_a_bad_row(tmp_path, column, value)

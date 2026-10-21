@@ -8,7 +8,7 @@ from numpy.typing import NDArray
 
 from seachange.generators._shared import rng
 
-from .individual import JSONIterable
+from .codecs import JSONIterable
 
 
 def _validate_same_shape(

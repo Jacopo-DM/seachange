@@ -1,7 +1,9 @@
 """Test: Individual class behaviour."""
 
+import numpy as np
 import pytest
 
+from seachange.codecs import UndecodableGenotype
 from seachange.individual import Individual
 
 
@@ -97,3 +99,30 @@ def test_fitness_stored_as_float() -> None:
     ind = Individual()
     ind.fitness = 10
     assert isinstance(ind.fitness_, float)
+
+
+def test_a_numpy_genotype_is_made_read_only() -> None:
+    """A genotype is set once: an in-place edit raises at once."""
+    parent = Individual()
+    parent.genotype = np.zeros(3, dtype=np.float32)
+    child = Individual()
+    child.genotype = parent.genotype
+    assert parent.requires_init is False
+    array = child.genotype
+    assert isinstance(array, np.ndarray)
+    with pytest.raises(ValueError, match="read-only"):
+        array[0] = 1.0
+
+
+def test_an_empty_numpy_genotype_keeps_requires_init() -> None:
+    """An array with no elements is an empty genotype."""
+    ind = Individual()
+    ind.genotype = np.zeros((2, 0))
+    assert ind.requires_init is True
+
+
+def test_an_undecodable_genotype_raises_on_reading() -> None:
+    """A stored genotype no codec can read fails where it is read."""
+    ind = Individual(genotype_=UndecodableGenotype(error="bad bytes"))
+    with pytest.raises(ValueError, match="cannot be decoded: bad bytes"):
+        _ = ind.genotype

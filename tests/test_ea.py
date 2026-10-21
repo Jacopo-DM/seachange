@@ -4,10 +4,11 @@ import subprocess  # ruff: ignore[suspicious-subprocess-import]  # runs a fixed 
 import sys
 from pathlib import Path
 
+import numpy as np
 import pytest
 from pydantic import ValidationError
 
-from seachange import EA, EAOperation, config
+from seachange import EA, Archive, EAOperation, config
 from seachange.individual import Individual
 from seachange.population import Population
 from tests.ea_helpers import (
@@ -281,3 +282,47 @@ def test_population_is_readable_right_after_creation(tmp_path: Path) -> None:
     assert first.genotype == make_pop()[0].genotype
     assert first.time_of_birth == 0
     assert first.id is not None
+
+
+@EAOperation
+def replace_genotypes(population: Population) -> Population:
+    # Give every saved individual a new array, as a repair step might
+    for individual in population:
+        individual.genotype = np.full(2, individual.fitness)
+    return population
+
+
+def test_a_saved_numpy_genotype_can_be_replaced(tmp_path: Path) -> None:
+    """Replacing a stored array saves the new one."""
+    pop = Population([])
+    for value in (1.0, 2.0):
+        individual = Individual()
+        individual.genotype = np.zeros(2)
+        individual.fitness = value
+        pop.append(individual)
+    with EA(
+        pop,
+        [replace_genotypes],
+        num_steps=2,
+        db_file_path=tmp_path / "run.db",
+        quiet=True,
+    ) as ea:
+        ea.run()
+    with Archive(tmp_path / "run.db") as archive:
+        stored = archive.hall_of_fame(2, direction="max")
+    assert [np.asarray(i.genotype).tolist() for i in stored] == [
+        [2.0, 2.0],
+        [1.0, 1.0],
+    ]
+
+
+def test_an_individual_without_a_genotype_is_saved(tmp_path: Path) -> None:
+    """A missing genotype is stored as NULL and read back as missing."""
+    with EA(
+        Population([Individual()]),
+        [noop],
+        db_file_path=tmp_path / "run.db",
+        quiet=True,
+    ) as ea:
+        ea.fetch_population(only_alive=False, requires_eval=None)
+        assert ea.population[0].genotype_ is None

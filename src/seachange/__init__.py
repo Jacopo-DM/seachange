@@ -2,8 +2,12 @@
 
 from seachange.archive import Archive, FitnessStats, GenerationRange
 from seachange.codecs import (
+    Genotype,
     GenotypeCodec,
     JsonCodec,
+    JSONIterable,
+    JSONPrimitive,
+    JSONType,
     NumpyCodec,
     register_codec,
 )
@@ -21,12 +25,7 @@ from seachange.generators import (
     IntegersGenerator,
     seed,
 )
-from seachange.individual import (
-    Individual,
-    JSONIterable,
-    JSONPrimitive,
-    JSONType,
-)
+from seachange.individual import Individual
 from seachange.population import Population
 
 __all__: list[str] = [
@@ -43,6 +42,7 @@ __all__: list[str] = [
     "Floats",
     "FloatsGenerator",
     "GenerationRange",
+    "Genotype",
     "GenotypeCodec",
     "Individual",
     "IntegerMutator",

@@ -1,14 +1,19 @@
 """Individual: one row of the EA database."""
 
-from collections.abc import Hashable, Sequence
+from collections.abc import Sequence
+from typing import cast
 
+import numpy as np
 from pydantic import ValidationError
 from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
 
-type JSONPrimitive = str | int | float | bool
-type JSONType = JSONPrimitive | Sequence[JSONType] | dict[Hashable, JSONType]
-type JSONIterable = Sequence[JSONType] | dict[Hashable, JSONType]
+from seachange.codecs import (
+    Genotype,
+    GenotypeColumn,
+    JSONType,
+    decode_error,
+)
 
 
 # Mutable on purpose: SQLAlchemy saves a table row by changing it
@@ -47,10 +52,11 @@ class Individual(SQLModel, table=True):
         ``True`` when the genotype has not yet been assigned. Automatically
         updated by the ``genotype`` setter. Indexed for fast queries.
         Default is ``True``.
-    genotype_ : JSONIterable or None, optional
+    genotype_ : object, optional
         Raw stored genotype. Access via the ``genotype`` property in user
-        code. Stored as a JSON column to support arbitrary nested
-        structures. Default is ``None``.
+        code. Stored through the codec that handles it (see
+        ``seachange.codecs``), so a numpy array comes back as one.
+        Default is ``None``.
     tags_ : dict[JSONType, JSONType], optional
         Raw stored tag dictionary. Access and update via the ``tags``
         property. Stored as a JSON column. Default is ``{}``.
@@ -69,7 +75,7 @@ class Individual(SQLModel, table=True):
 
     # -- Genotype --------------------------------------------------------------
     requires_init: bool = Field(default=True, index=True)
-    genotype_: JSONIterable | None = Field(default=None, sa_column=Column(JSON))
+    genotype_: object = Field(default=None, sa_column=Column(GenotypeColumn()))
 
     # -- Tags ------------------------------------------------------------------
     tags_: dict[JSONType, JSONType] = Field(default={}, sa_column=Column(JSON))
@@ -114,39 +120,51 @@ class Individual(SQLModel, table=True):
     # -- Genotype property -----------------------------------------------------
 
     @property
-    def genotype(self) -> JSONIterable:
+    def genotype(self) -> Genotype:
         """Genotype of the individual.
 
         Returns
         -------
-        JSONIterable
-            The stored genotype sequence or mapping.
+        Genotype
+            The genotype as assigned: a list or dict of JSON values, or a
+            read-only numpy array.
 
         Raises
         ------
         ValueError
             If accessed before the genotype has been initialised
-            (i.e. ``genotype_`` is ``None``).
+            (i.e. ``genotype_`` is ``None``), or if the stored genotype
+            could not be decoded.
         """
         if self.genotype_ is None:
             msg = f"genotype accessed before initialization: {self.id=}"
             raise ValueError(msg)
-        return self.genotype_
+        if (error := decode_error(self.genotype_)) is not None:
+            msg = f"genotype of row {self.id} cannot be decoded: {error}"
+            raise ValueError(msg)
+        # genotype_ holds what the setter or a codec put there
+        return cast("Genotype", self.genotype_)
 
     @genotype.setter
-    def genotype(self, value: JSONIterable) -> None:
+    def genotype(self, value: Genotype) -> None:
         """Assign the genotype and update the initialisation flag.
 
         Sets ``requires_init`` to ``False`` when ``value`` is non-empty,
-        ``True`` when it is empty or falsy.
+        ``True`` when it is empty. A numpy array is made read-only, as a
+        genotype is set once and never changed in place; this also affects
+        the caller's array object.
 
         Parameters
         ----------
-        value : JSONIterable
-            The genotype to assign. May be any JSON-serialisable sequence
-            or mapping.
+        value : Genotype
+            The genotype to assign: a list or dict of JSON values, or a
+            numpy array.
         """
-        self.requires_init = not bool(value)
+        if isinstance(value, np.ndarray):
+            value.flags.writeable = False
+            self.requires_init = value.size == 0
+        else:
+            self.requires_init = len(value) == 0
         self.genotype_ = value
 
     # -- Tags property ---------------------------------------------------------
@@ -201,6 +219,12 @@ def check_rows(rows: Sequence[Individual]) -> list[Individual]:
         If a row does not validate; the message names its ``id``.
     """
     for row in rows:
+        if (error := decode_error(row.genotype_)) is not None:
+            msg = (
+                f"Database row {row.id} is not a valid Individual: "
+                f"its genotype cannot be decoded: {error}"
+            )
+            raise ValueError(msg)
         try:
             Individual.model_validate(row, from_attributes=True)
         except ValidationError as error:

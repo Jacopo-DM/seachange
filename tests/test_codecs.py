@@ -7,16 +7,17 @@ import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
 from hypothesis.extra import numpy as hnp
+from sqlalchemy.dialects import sqlite
 
 from seachange import (
     GenotypeCodec,
     JsonCodec,
+    JSONIterable,
     NumpyCodec,
     register_codec,
 )
 from seachange import codecs as codecs_module
-from seachange.codecs import Array, codec_for, codec_named
-from seachange.individual import JSONIterable
+from seachange.codecs import Array, GenotypeColumn, codec_for, codec_named
 from tests.test_round_trip import GENOTYPES
 
 # Every dtype numpy stores without pickle, in shapes up to 3 dimensions
@@ -232,3 +233,33 @@ def test_codec_named_finds_built_ins_and_names_the_known_ones() -> None:
     assert codec_named("json").name == "json"
     with pytest.raises(ValueError, match="known: 'numpy', 'json'"):
         codec_named("torch")
+
+
+@pytest.mark.usefixtures("no_registered_codecs")
+@pytest.mark.parametrize("name", ["", "a\0b"])
+def test_a_codec_name_is_text_without_a_zero_byte(name: str) -> None:
+    """The zero byte ends the name in a stored genotype."""
+    codec = FrozensetCodec()
+    codec.name = name
+    with pytest.raises(ValueError, match="without a zero byte"):
+        register_codec(codec)
+
+
+# -- GenotypeColumn ------------------------------------------------------------
+
+
+def test_the_column_stores_the_codec_name_first() -> None:
+    """Stored bytes are the codec name, a zero byte, the codec's bytes."""
+    column = GenotypeColumn()
+    dialect = sqlite.dialect()
+    stored = column.process_bind_param([1, 2], dialect)
+    assert stored == b"json\0[1, 2]"
+    assert column.process_result_value(stored, dialect) == [1, 2]
+
+
+def test_the_column_keeps_a_missing_genotype_missing() -> None:
+    """None is stored as NULL and read back as None."""
+    column = GenotypeColumn()
+    dialect = sqlite.dialect()
+    assert column.process_bind_param(None, dialect) is None
+    assert column.process_result_value(None, dialect) is None

@@ -91,6 +91,10 @@ ea = EA.restart(
 
 Without `db_file_path`, the new run would write to the default `__data__/database.db`, the file you are restarting from, so `EA.restart` raises `ValueError` instead of overwriting it. Pass `generation=` to continue from an earlier generation.
 
+## License
+
+GPL-3.0-or-later, the same as ARIEL, which seachange's code comes from. See [LICENSE](LICENSE).
+
 ## Documentation
 
 Every public class and function has a NumPy-style docstring. The Sphinx sources are in [docs/](docs/).

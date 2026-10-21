@@ -19,7 +19,7 @@ from sqlmodel import Session, col, or_, select
 from seachange.ea_database import setup_database
 from seachange.ea_operation import Operation
 from seachange.ea_settings import DBHandlingMode, Direction, config
-from seachange.individual import Individual
+from seachange.individual import Individual, check_rows
 from seachange.population import Population
 
 
@@ -201,7 +201,7 @@ class EA:
                         raise ValueError(msg)
                     generation = latest
 
-                rows = list(
+                rows = check_rows(
                     session.exec(
                         select(Individual)
                         .where(Individual.time_of_birth <= generation)

@@ -11,7 +11,7 @@ from sqlmodel.sql.expression import SelectOfScalar
 
 from seachange.ea_settings import Direction
 from seachange.generators._shared import py_rng
-from seachange.individual import Individual
+from seachange.individual import Individual, check_rows
 from seachange.model import Model
 from seachange.population import Population
 
@@ -147,7 +147,7 @@ class Archive:
         self, statement: SelectOfScalar[Individual]
     ) -> list[Individual]:
         with Session(self.engine) as session:
-            rows = list(session.exec(statement).all())
+            rows = check_rows(session.exec(statement).all())
         for ind in rows:
             ind.id = None
         return rows
@@ -167,9 +167,11 @@ class Archive:
             picked = py_rng.sample(ids, min(n, len(ids)))
             by_id = {
                 row.id: row
-                for row in session.exec(
-                    select(Individual).where(id_column.in_(picked))
-                ).all()
+                for row in check_rows(
+                    session.exec(
+                        select(Individual).where(id_column.in_(picked))
+                    ).all()
+                )
             }
         drawn = [by_id[row_id] for row_id in picked]
         # As in _fetch_all: callers may add these to a new run as new rows

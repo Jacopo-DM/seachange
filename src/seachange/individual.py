@@ -2,6 +2,7 @@
 
 from collections.abc import Hashable, Sequence
 
+from pydantic import ValidationError
 from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
 
@@ -176,3 +177,33 @@ class Individual(SQLModel, table=True):
             The new tags.
         """
         self.tags_ = dict(value)
+
+
+def check_rows(rows: Sequence[Individual]) -> list[Individual]:
+    """Validate rows read from a database file before they are used.
+
+    A SQLModel table model does not validate what it loads, so a file
+    edited by another tool could hand over, say, a text ``fitness_``.
+
+    Parameters
+    ----------
+    rows : Sequence[Individual]
+        Rows as loaded from the database.
+
+    Returns
+    -------
+    list[Individual]
+        The same rows.
+
+    Raises
+    ------
+    ValueError
+        If a row does not validate; the message names its ``id``.
+    """
+    for row in rows:
+        try:
+            Individual.model_validate(row, from_attributes=True)
+        except ValidationError as error:
+            msg = f"Database row {row.id} is not a valid Individual: {error}"
+            raise ValueError(msg) from error
+    return list(rows)

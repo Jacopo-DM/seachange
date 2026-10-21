@@ -34,6 +34,7 @@ Import from `seachange` instead of `ariel.ec`: `from seachange import EA, Popula
 - **`ind.tags = {...}` replaces the tags instead of merging them.** To keep the old tags, write `ind.tags = {**ind.tags, "key": value}`. A call that relied on the merge loses the old tags without an error.
 - **`Population.sample`, `Population.shuffle` and every `Archive` draw use seachange's own generator** instead of Python's global `random` or SQLite's `random()`, so `seed()` covers them. They draw different values than before for the same global seed.
 - **`Archive` returns records instead of a dict and a tuple.** `archive.fitness_stats()["mean"]` becomes `archive.fitness_stats().mean` (a frozen `FitnessStats` with `min`, `max`, `mean`, `std`, `median`), and `lo, hi = archive.generation_range` becomes `span.first` and `span.last` (a `GenerationRange`).
+- **Rows read from a database file are checked.** `EA.restart` and every `Archive` query validate each row as it loads; a file edited by another tool (say, a text `fitness_`) raises `ValueError` naming the row, where it used to load and fail later.
 - **Unknown `get_solution` modes raise.** `ea.get_solution("bset")` raises `ValueError` naming the valid modes; it used to return `None`.
 
 ### Removed

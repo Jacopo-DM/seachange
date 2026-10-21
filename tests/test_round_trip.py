@@ -12,7 +12,7 @@ from tests.ea_helpers import noop
 
 # What JSONType allows and a JSON column keeps: lists, string dict keys,
 # no None (JSONType has none), no NaN or inf
-JSON_VALUES: st.SearchStrategy[JSONType] = st.recursive(
+JSON_VALUES = st.recursive(
     st.booleans()
     | st.integers()
     | st.floats(allow_nan=False, allow_infinity=False)
@@ -23,12 +23,10 @@ JSON_VALUES: st.SearchStrategy[JSONType] = st.recursive(
     ),
     max_leaves=10,
 )
-GENOTYPES: st.SearchStrategy[JSONIterable] = st.lists(
-    JSON_VALUES, max_size=5
-) | st.dictionaries(st.text(max_size=5), JSON_VALUES, max_size=4)
-TAGS: st.SearchStrategy[dict[JSONType, JSONType]] = st.dictionaries(
+GENOTYPES = st.lists(JSON_VALUES, max_size=5) | st.dictionaries(
     st.text(max_size=5), JSON_VALUES, max_size=4
 )
+TAGS = st.dictionaries(st.text(max_size=5), JSON_VALUES, max_size=4)
 
 
 @given(genotype=GENOTYPES, tags=TAGS)

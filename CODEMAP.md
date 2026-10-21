@@ -11,7 +11,7 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 | `ea_operation.py` | wraps a `Population -> Population` function as a pipeline step | `Operation`, `EAOperation` |
 | `ea_settings.py` | defaults for the engine, overridable from the environment | `EASettings`, `DBHandlingMode`, `Direction`, `config` |
 | `ea_database.py` | creates the database file | `setup_database` |
-| `individual.py` | one row of the database: genotype, fitness, tags, birth and death | `Individual`, `JSONType`, `JSONPrimitive`, `JSONIterable` |
+| `individual.py` | one row of the database: genotype, fitness, tags, birth and death | `Individual`, `JSONType`, `JSONPrimitive`, `JSONIterable`; `check_rows` (used by `ea` and `archive`, not exported) |
 | `population.py` | a list of individuals with selection helpers | `Population` |
 | `archive.py` | read-only queries over a finished run's database | `Archive`, `FitnessStats`, `GenerationRange` |
 | `model.py` | the frozen base class for records | `Model` (internal) |
@@ -26,7 +26,7 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 
 ## `tests/`
 
-`test_<module>.py` for `archive`, `crossover`, `ea`, `ea_operation`, `individual`, `population` and `revde`; `test_ea_restart.py` covers restarting from a database, `test_examples.py` runs each example in a fresh interpreter, `test_round_trip.py` checks with Hypothesis that genotypes and tags come back from the database unchanged, `test_seed.py` checks that a run and every draw repeat after `seed()`, `test_closing.py` checks that `close()` and `with` release connections (without the `dispose_engines` fixture), and `test_generators.py` the whole `generators/` package. `ea_settings` and `ea_database` have no test file of their own; the engine tests cover them. `conftest.py` sets the Hypothesis profile (derandomized when `CI` is set) and holds the `dispose_engines` fixture that `test_archive.py`, `test_ea.py` and `test_ea_restart.py` opt into; `ea_helpers.py` holds shared fixtures and operations, `misuse.py` lets tests pass badly typed input on purpose.
+`test_<module>.py` for `archive`, `crossover`, `ea`, `ea_operation`, `individual`, `population` and `revde`; `test_ea_restart.py` covers restarting from a database, `test_examples.py` runs each example in a fresh interpreter, `test_database_check.py` checks that edited database rows are refused on load, `test_round_trip.py` checks with Hypothesis that genotypes and tags come back from the database unchanged, `test_seed.py` checks that a run and every draw repeat after `seed()`, `test_closing.py` checks that `close()` and `with` release connections (without the `dispose_engines` fixture), and `test_generators.py` the whole `generators/` package. `ea_settings` and `ea_database` have no test file of their own; the engine tests cover them. `conftest.py` sets the Hypothesis profile (derandomized when `CI` is set) and holds the `dispose_engines` fixture that `test_archive.py`, `test_ea.py` and `test_ea_restart.py` opt into; `ea_helpers.py` holds shared fixtures and operations, `misuse.py` lets tests pass badly typed input on purpose.
 
 ## `docs/`, `tools/`, `.github/`
 

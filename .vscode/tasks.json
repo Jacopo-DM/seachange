@@ -1,0 +1,153 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run script with: uv run",
+            "type": "shell",
+            "command": "uv",
+            "args": [
+                "run",
+                "${file}"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new",
+                "clear": true
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "ruff format",
+            "type": "shell",
+            "command": "uv",
+            "args": [
+                "run",
+                "--locked",
+                "ruff",
+                "format"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
+        },
+        {
+            "label": "ruff check",
+            "type": "shell",
+            "command": "uv",
+            "args": [
+                "run",
+                "--locked",
+                "ruff",
+                "check",
+                "--no-fix"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
+        },
+        {
+            "label": "mypy",
+            "type": "shell",
+            "command": "uv",
+            "args": [
+                "run",
+                "--locked",
+                "mypy",
+                "."
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
+        },
+        {
+            "label": "ty check (advisory)",
+            "type": "shell",
+            "command": "uv",
+            "args": [
+                "run",
+                "--locked",
+                "ty",
+                "check"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
+        },
+        {
+            "label": "pytest",
+            "type": "shell",
+            "command": "uv",
+            "args": [
+                "run",
+                "--locked",
+                "pytest",
+                "-q"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
+        },
+        {
+            "label": "docs: preview",
+            "type": "shell",
+            "command": "uv",
+            "args": [
+                "run",
+                "--locked",
+                "--group",
+                "docs",
+                "sphinx-autobuild",
+                "--open-browser",
+                "--watch",
+                "src",
+                "docs",
+                "docs/_build/html"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "docs: build",
+            "type": "shell",
+            "command": "uv",
+            "args": [
+                "run",
+                "--locked",
+                "--group",
+                "docs",
+                "sphinx-build",
+                "-W",
+                "--keep-going",
+                "-b",
+                "html",
+                "docs",
+                "docs/_build/html"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
+        }
+    ]
+}

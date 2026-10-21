@@ -1,6 +1,5 @@
 """Archive: read-only query interface for a persisted EA database."""
 
-import random
 from pathlib import Path
 from types import TracebackType
 from typing import Self
@@ -11,6 +10,7 @@ from sqlmodel import Session, col, select
 from sqlmodel.sql.expression import SelectOfScalar
 
 from seachange.ea_settings import Direction
+from seachange.generators._shared import py_rng
 from seachange.individual import Individual
 from seachange.population import Population
 
@@ -118,6 +118,31 @@ class Archive:
             ind.id = None
         return rows
 
+    def _draw(
+        self, statement: SelectOfScalar[Individual], n: int
+    ) -> list[Individual]:
+        # Pick up to n matching rows with py_rng, so seed() repeats the draw.
+        # Ids are read in a fixed order; only the picked rows are loaded.
+        id_column = col(Individual.id)
+        with Session(self.engine) as session:
+            ids: list[int | None] = list(
+                session.scalars(
+                    statement.with_only_columns(id_column).order_by(id_column)
+                ).all()
+            )
+            picked = py_rng.sample(ids, min(n, len(ids)))
+            by_id = {
+                row.id: row
+                for row in session.exec(
+                    select(Individual).where(id_column.in_(picked))
+                ).all()
+            }
+        drawn = [by_id[row_id] for row_id in picked]
+        # As in _fetch_all: callers may add these to a new run as new rows
+        for ind in drawn:
+            ind.id = None
+        return drawn
+
     # -- Single-individual queries ---------------------------------------------
 
     def random_individual(
@@ -150,19 +175,14 @@ class Archive:
         ValueError
             If no individuals match the supplied filters.
         """
-        statement = (
-            self
-            ._base_query(
-                birth_range=birth_range,
-                death_range=death_range,
-                fitness_range=fitness_range,
-                alive_filter=False if only_dead else None,
-            )
-            .order_by(func.random())
-            .limit(1)
+        statement = self._base_query(
+            birth_range=birth_range,
+            death_range=death_range,
+            fitness_range=fitness_range,
+            alive_filter=False if only_dead else None,
         )
 
-        results = self._fetch_all(statement)
+        results = self._draw(statement, 1)
         if not results:
             msg = "No individuals match the given filters."
             raise ValueError(msg)
@@ -239,19 +259,14 @@ class Archive:
         Population
             May be smaller than ``n`` if fewer matching individuals exist.
         """
-        statement = (
-            self
-            ._base_query(
-                birth_range=birth_range,
-                death_range=death_range,
-                fitness_range=fitness_range,
-                alive_filter=False if only_dead else None,
-            )
-            .order_by(func.random())
-            .limit(n)
+        statement = self._base_query(
+            birth_range=birth_range,
+            death_range=death_range,
+            fitness_range=fitness_range,
+            alive_filter=False if only_dead else None,
         )
 
-        return Population(self._fetch_all(statement))
+        return Population(self._draw(statement, n))
 
     def hall_of_fame(
         self,
@@ -357,12 +372,12 @@ class Archive:
         sample_size = min(tournament_size, len(pool_list))
         if direction == "min":
             winners = [
-                min(random.sample(pool_list, sample_size), key=_key)
+                min(py_rng.sample(pool_list, sample_size), key=_key)
                 for _ in range(n)
             ]
         else:
             winners = [
-                max(random.sample(pool_list, sample_size), key=_key)
+                max(py_rng.sample(pool_list, sample_size), key=_key)
                 for _ in range(n)
             ]
         return Population(winners)
@@ -433,7 +448,7 @@ class Archive:
             if ind.fitness_ is not None and lo_val <= ind.fitness_ <= hi_val
         ]
         if n is not None:
-            band = random.sample(band, min(n, len(band)))
+            band = py_rng.sample(band, min(n, len(band)))
         return Population(band)
 
     # -- Statistics / introspection --------------------------------------------

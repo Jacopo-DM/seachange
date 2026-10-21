@@ -22,7 +22,7 @@ Non-goals until 0.1: robot genotypes, databases other than SQLite.
 
 ## Current state
 
-Phase: goals 1 to 6 done; goal 7 (release) in progress. T8 (licence) and T11 (repository URL) are done. Left: T25 `seed()` for every random choice, then T9 CHANGELOG and T10 build-and-install check. Next step: T25.
+Phase: goals 1 to 6 done; goal 7 (release) in progress. T8 (licence) and T11 (repository URL) are done. Left: T9 CHANGELOG and T10 build-and-install check. Next step: T9.
 
 ## Baseline
 
@@ -40,7 +40,6 @@ Approved 2026-10-21. One task per commit.
 
 ### Tier 2: goal 7
 
-- **T25 Make `seed()` cover every random choice** (approved 2026-10-21 during housekeeping). Files: `generators/_shared.py` (a private `random.Random` beside the numpy generator, reseeded by `seed()`), `population.py` (`sample`, `shuffle`), `archive.py` (`tournament_population`, `fitness_percentile_population`, and `random_individual` and `random_population`, which move from SQLite's `random()` to drawing in Python), tests, and CLAUDE.md's import rule (`population` and `archive` would read `generators._shared`). Test first: a run whose operators use `sample` and `shuffle`, and the four `Archive` draws, give identical results twice after `seed(5)` and different results after `seed(6)`. Risk medium: the two SQLite draws must fetch candidate ids and sample them in Python, which costs one extra query on large archives; Python's global `random` stays untouched. Behaviour change: those draws give different values from today's, so it gets a Results row. Estimate 1 hour. Do it before T9 so the CHANGELOG includes it.
 - **T9 Write `CHANGELOG.md`** (goal 7). After goal 6. It lists every change from `ariel.ec` (goals 1, 2 and 6), each with the old call and the new one. Risk low. Verify: every behaviour change recorded in DESIGN.md has a line.
 - **T10 Build-and-install check** (goal 7). Files: `CLAUDE.md` (the commands). Run `uv build`, then `uv run --isolated --with dist/<wheel> python <README example>` in a temporary folder, and record the commands with their output. Risk low. Verify: it prints `best fitness 20.0 of 20`.
 
@@ -55,3 +54,4 @@ Approved 2026-10-21. One task per commit.
 
 ## Known problems
 
+None known (2026-10-21).

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import random
 from typing import TYPE_CHECKING, overload
+
+from seachange.generators._shared import py_rng
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -211,7 +212,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
             drawn uniformly at random without replacement.
         """
         return Population(
-            random.sample(
+            py_rng.sample(
                 self.population,
                 min(n, len(self.population)),
             ),
@@ -293,7 +294,7 @@ class Population:  # ruff: ignore[too-many-public-methods]  # public signature o
             shuffled order.
         """
         data = list(self.population)
-        random.shuffle(data)
+        py_rng.shuffle(data)
         return Population(data)
 
     def where(self, predicate: Callable[[Individual], bool]) -> Population:

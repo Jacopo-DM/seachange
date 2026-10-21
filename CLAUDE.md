@@ -28,6 +28,8 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 | Types (ty, advisory) | `uv run --locked ty check` | 0 diagnostics |
 | Tests | `uv run --no-sync pytest -q` | 268 passed, 100% branch coverage, ~8 s; no warnings; `pytest.ini` turns a leaked SQLite connection into a failure |
 | Docs | `uv run --no-sync sphinx-build -W --keep-going -b html docs docs/_build/html` | passes, ~2 s; same command as `docs.yml` |
+| Docs, shortcut | `uv-docs build` | passes, ~2 s; the shell function in `~/Functions/functions/my-funcs` that runs the build above with `--locked --group docs` |
+| Docs, live preview | `uv-docs` | opens the docs in a browser and rebuilds when `docs/` or `src/` change (`sphinx-autobuild`); stop it with Ctrl+C. Not run by Claude: it opens a browser |
 | Build | `uv build --offline` | passes, <1 s; writes the wheel and sdist to `dist/` (wheel: the package, `py.typed`, `LICENSE`) |
 | Clean install | `uv run --isolated --no-project --python 3.13 --with dist/seachange-0.1.0-py3-none-any.whl python -I examples/a1_one_max.py` | after Build; prints `best fitness 20.0 of 20`, ~1 s; imports seachange from a throwaway environment, not `src/`. Needs network to pypi.org: with `--offline` uv cannot resolve the dependencies |
 | Benchmark (goal 8) | `uv run --no-sync python tools/bench_genotypes.py` | ~38 s; prints storage seconds per generation and database MB for 3 runs of list and of numpy genotypes, and each median (2026-10-21 after T28: lists 0.506 s, 435 MB; numpy 0.015 s, 86 MB). Run nothing else meanwhile |

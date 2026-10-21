@@ -59,6 +59,9 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 - 2026-10-21: the public repository is `https://github.com/Jacopo-DM/seachange` (user). The CI and docs workflows already target GitHub Actions; the repo can move to an org later.
 - 2026-10-21: `LICENSE` carries two copyright lines: 2025 for the ARIEL code (Jacopo Michele di Matteo and Ioannis Grigoriadis) and 2026 for the seachange changes (Jacopo Michele di Matteo). Chosen by the user.
 - 2026-10-21: the docs build fixes the `Todo` directive by loading `sphinx.ext.todo`, not by deleting the empty template sections (user).
+- 2026-10-21: `Archive.fitness_stats` returns a frozen `FitnessStats` and `generation_range` a frozen `GenerationRange`, both on one shared base class `seachange.model.Model` (`frozen=True`, `extra="forbid"`), as the Python standard asks for records (user, compliance check 9). Reason: `stats.mean` gets editor completion and mypy catches `stats.maen`; `stats["maen"]` only fails when it runs. Done before 0.1, so no outside caller breaks.
+- 2026-10-21: rows read from a database file are validated as they load, in `EA.restart` and every `Archive` query, through `individual.check_rows` (user, compliance check 10). Reason: a SQLModel `table=True` model does not validate what it loads, so a file edited by another tool loaded a text `fitness_` such as `'high'` and failed later, far from the cause. A run's own per-generation fetch (`EA._fetch`) is not checked: it reads only what the run just wrote, and checking it would cost time every generation.
+- 2026-10-21: `Individual` stays a mutable SQLModel table, an allowed exception to "every record is a frozen model" (a type a third-party API forces): SQLAlchemy saves a row by changing it. The reason is a comment at the class.
 
 ## Rejected approaches
 
@@ -68,6 +71,8 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 - Docs build: deleting the empty `Notes` and `Todo` sections from `revde.py`'s docstring. The user chose to enable `sphinx.ext.todo` instead.
 - `operations` required (C12): keeping the `None` default (the mistake already fails at once) or dropping both defaults (restarts would still read `EA(None, ops, restart=...)`). Both rejected in favour of `EA.restart()`.
 - Licence: relicensing under MIT or similar. It needs written consent from every copyright holder of ARIEL's code.
+- Moving this repo's two template differences (`pytest.ini`'s leak filter, `docs/conf.py`'s `sphinx.ext.todo`) into the shared templates in `~/Functions/_rsync/`. The user kept them in this project only (recorded in CLAUDE.md); in the templates, the leak filter would fail other projects that leak resources.
+- `Archive` draws: keeping SQLite's `ORDER BY random()` (it cannot be seeded, so `seed()` could not repeat a run), or loading every matching row and sampling in Python (loads whole archives). `_draw` reads only the ids in id order, samples them with `py_rng`, then loads the picked rows.
 
 ## Results
 
@@ -110,3 +115,8 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 - `uv-cr-lib`'s template `tools/run_notebooks.py` fails mypy unless `nbclient`, `nbformat` and `ipykernel` are installed. They are in the dev group here, so `uv sync --all-groups` covers it.
 - `uv run --isolated --offline --with dist/<wheel>` fails to resolve seachange's dependencies even though their wheels are in uv's cache; it needs network to pypi.org for the index listings (checked 2026-10-21). `uv pip` would avoid the resolver, but the user's python-guard hook blocks it.
 - `uv_build`'s sdist contains a `pyproject.toml.orig` next to `pyproject.toml`; the repo has no such file.
+- `Archive` sets `id = None` on every individual it returns (`_fetch_all`, `_draw`), so they can be added to a new run as new rows. Tests that compare draws must compare genotypes, not ids: comparing ids compares `None` with `None` and always passes.
+- Hypothesis tests cannot use pytest's `tmp_path`: a function-scoped fixture is shared by every generated example. `tests/test_round_trip.py` makes a `TemporaryDirectory` per example instead.
+- `statement.with_only_columns(...)` turns sqlmodel's `SelectOfScalar` into a plain SQLAlchemy `Select`, which sqlmodel's `Session.exec` does not accept under mypy; `Archive._draw` uses `session.scalars(...)` for the id query.
+- `mypy.ini` sets `warn_unreachable`, so a `match` over a `Literal` with a `case _:` fallback is reported as unreachable. `EA.get_solution` checks the mode with a guard before the branches instead.
+- Validating a loaded row with `Individual.model_validate(row.model_dump())` prints pydantic serializer warnings for a bad value; `model_validate(row, from_attributes=True)` validates without dumping first.

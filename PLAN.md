@@ -16,13 +16,15 @@ Order (approved 2026-10-21): 1 to 5 first, because they are small and fix or pin
 | 6 | api-cleanup | Done 2026-10-21: audit T7 (ab86dd5) found 12 candidates; all approved and made as T12 to T23 (8a2f40c to b7e5902). Each change and its ARIEL migration step is a row in DESIGN.md Results, for the CHANGELOG (T9). | new behaviour | met: every approved change has tests and a migration line; rejected options are in DESIGN.md | done 2026-10-21 | 2026-10-21 |
 | 7 | release-0.1 | Done 2026-10-21: licence (T8), CHANGELOG (T9), build-and-install check (T10), repository URL (T11), plus T24 and T25 (a1bb034 to c6fac55). | new behaviour | met: `uv build` makes both archives; a throwaway environment installs the wheel and the one-max example prints `best fitness 20.0 of 20`; docs build with `-W`; no placeholders in the README; CHANGELOG lists every change | done 2026-10-21 | 2026-10-21 |
 
-After 0.1 (planned, not yet goals with measures): robot genotypes (ARIEL's tree, CPPN and NDE) moving here, a database backend other than SQLite, and ARIEL switching to seachange (work in the ARIEL repo).
+After 0.1 (planned, not yet goals with measures): robot genotypes (ARIEL's tree, CPPN and NDE) moving here, a database backend other than SQLite, and ARIEL switching to seachange (work in the ARIEL repo). The switch pays off first: CHANGELOG.md is already written as its migration guide. Before it, ask the ARIEL session why 3 of ARIEL's 1451 tests did not pass on 2026-10-21 (it reported 1448 passing without the cause). Scope these with /zz-02-project-plan.
 
 Non-goals until 0.1: robot genotypes, databases other than SQLite.
 
 ## Current state
 
-Phase: all seven goals done; 0.1.0 is ready to publish. Next steps are the user's: create github.com/Jacopo-DM/seachange, push, then publish 0.1.0 to PyPI.
+Phase: all seven goals done; 0.1.0 is ready to publish. A Python-standard compliance pass followed on 2026-10-21 (commits c24df65 to f78f2bd): 20 of its 21 checks meet the standard; the one left is whether the settings should be frozen (Open questions). Branch `compliance` is merged into `master` but not deleted (deleting needs the user's say-so). Nothing is uncommitted.
+
+Next steps are the user's, in this order: create github.com/Jacopo-DM/seachange (for example `gh repo create Jacopo-DM/seachange --public --source . --remote origin`), approve the push of `master` (Claude may run it only on that approval), then publish 0.1.0 with `uv build` and `uv publish` (the user publishes; Claude never does). Decisions waiting on the user, none blocking the release: the settings question below, and whether to fix the two Known problems.
 
 ## Baseline
 

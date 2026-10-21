@@ -22,9 +22,9 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 | Purpose | Command | Checked |
 |---|---|---|
 | Install everything | `uv sync --all-groups` | passes; `--locked --dry-run` reports no changes |
-| Format | `uv run --no-sync ruff format src tests tools examples` | 35 files unchanged, <1 s |
+| Format | `uv run --no-sync ruff format src tests tools examples` | 39 files unchanged, <1 s |
 | Lint | `uv run --no-sync ruff check --no-fix .` | passes, <1 s; without `--no-fix` it rewrites files (`fix = true` in the template) |
-| Types (mypy) | `uv run --no-sync mypy .` | passes, 36 files, <1 s |
+| Types (mypy) | `uv run --no-sync mypy .` | passes, 40 files, <1 s |
 | Types (ty, advisory) | `uv run --locked ty check` | 0 diagnostics |
 | Tests | `uv run --no-sync pytest -q` | 224 passed, 100% branch coverage, ~5.5 s; no warnings; `pytest.ini` turns a leaked SQLite connection into a failure |
 | Docs | `uv run --no-sync sphinx-build -W --keep-going -b html docs docs/_build/html` | passes, ~2 s; same command as `docs.yml` |

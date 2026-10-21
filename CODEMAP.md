@@ -1,6 +1,6 @@
 # Code map
 
-Entry point: `import seachange`. `optimizers/revde.py` also runs as a script (`main()` prints a RevDE mutation). Generated paths are in the ignore list in CLAUDE.md.
+Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the README example). `optimizers/revde.py` also runs as a script (`main()` prints a RevDE mutation). Generated paths are in the ignore list in CLAUDE.md.
 
 ## `src/seachange/`
 

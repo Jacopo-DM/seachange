@@ -13,6 +13,7 @@ Import from `seachange` instead of `ariel.ec`: `from seachange import EA, Popula
 - `EA.close()` and `Archive.close()` release the database connection, and both work as context managers: `with EA(...) as ea:` and `with Archive(path) as archive:`.
 - `seachange.seed(n)` restarts every random draw seachange makes, so after `seed(5)` a whole run comes out the same every time. Python's global `random` is not touched.
 - `EA.restart(source, operations, *, generation=None, ...)` continues a recorded run in a new database (see Changed).
+- Genotype codecs: `seachange.GenotypeCodec` (the protocol), `JsonCodec`, `NumpyCodec` and `register_codec`. `NumpyCodec` stores an array as a `.npy` file, dtype and shape included, and gives it back read-only.
 - `seachange.Direction`, the type of the new `direction=` keyword: `Literal["max", "min"]`.
 - `seachange.FitnessStats` and `seachange.GenerationRange`, the records `Archive` returns (see Changed).
 - `examples/a2_revde.py`, the RevDE demo that used to be `revde.main()`.

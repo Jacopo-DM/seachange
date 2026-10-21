@@ -1,6 +1,12 @@
 """seachange: a generational evolutionary algorithm engine."""
 
 from seachange.archive import Archive, FitnessStats, GenerationRange
+from seachange.codecs import (
+    GenotypeCodec,
+    JsonCodec,
+    NumpyCodec,
+    register_codec,
+)
 from seachange.crossover import Crossover
 from seachange.ea import EA
 from seachange.ea_operation import EAOperation
@@ -37,6 +43,7 @@ __all__: list[str] = [
     "Floats",
     "FloatsGenerator",
     "GenerationRange",
+    "GenotypeCodec",
     "Individual",
     "IntegerMutator",
     "Integers",
@@ -44,7 +51,10 @@ __all__: list[str] = [
     "JSONIterable",
     "JSONPrimitive",
     "JSONType",
+    "JsonCodec",
+    "NumpyCodec",
     "Population",
     "config",
+    "register_codec",
     "seed",
 ]

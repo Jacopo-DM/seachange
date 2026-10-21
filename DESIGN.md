@@ -53,6 +53,7 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 - 2026-10-21: restarting onto the source file raises `ValueError` in every `db_handling` mode (user). One rule with one message beats keeping halt's generic `FileExistsError` for this case.
 - 2026-10-21: `size=None` returns a plain number, matching numpy, with typing overloads so a default `size=1` caller still gets a sequence type (user). The integer generators get the same overloads.
 - 2026-10-21: the fitness direction has one name everywhere, `direction: Literal["max", "min"]` (user, goal 6 C10). A boolean `maximise=` was rejected: `sort(maximise=False)` reads as "do not maximise" rather than "ascending".
+- 2026-10-21: a restart is `EA.restart(source, operations, *, generation=None, ...)`, and `EA(population, operations)` requires both (user, goal 6 C12). It makes a new run and a continued run two separate calls, which drops the `None` placeholder and the "either population or restart" error. The user accepted the migration cost because C10 and C2 already change ARIEL's calls.
 - 2026-10-21: the docs build fixes the `Todo` directive by loading `sphinx.ext.todo`, not by deleting the empty template sections (user).
 
 ## Rejected approaches
@@ -61,6 +62,7 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 - Restart onto its own source file: writing the new run under a derived name such as `database_restart.db`. Rejected: the user may not notice where the data went. Checking inside `setup_database` was also rejected, because it does not know about restarts.
 - `size=None`: returning a one-item list (rejected by the user; it breaks numpy's convention), or annotating the return as a plain union (every caller would have to narrow, even with the default `size=1`).
 - Docs build: deleting the empty `Notes` and `Todo` sections from `revde.py`'s docstring. The user chose to enable `sphinx.ext.todo` instead.
+- `operations` required (C12): keeping the `None` default (the mistake already fails at once) or dropping both defaults (restarts would still read `EA(None, ops, restart=...)`). Both rejected in favour of `EA.restart()`.
 - Licence: relicensing under MIT or similar. It needs written consent from every copyright holder of ARIEL's code.
 
 ## Results

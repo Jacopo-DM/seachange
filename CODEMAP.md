@@ -15,7 +15,7 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 | `population.py` | a list of individuals with selection helpers | `Population` |
 | `archive.py` | read-only queries over a finished run's database | `Archive` |
 | `crossover.py` | default crossover functions | `Crossover` |
-| `generators/` | random float and integer sequences and their mutations | `FloatsGenerator`, `IntegersGenerator`, `FloatMutator`, `IntegerMutator`, `Floats`, `Integers`, `SEED` |
+| `generators/` | random float and integer sequences and their mutations | `FloatsGenerator`, `IntegersGenerator`, `FloatMutator`, `IntegerMutator`, `Floats`, `Integers`, `SEED`, `seed` |
 | `generators/_shared.py` | the shared RNG, settings and types | internal |
 | `optimizers/revde.py` | Reversible Differential Evolution | `RevDE` |
 

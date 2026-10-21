@@ -6,6 +6,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
+from seachange import seed
 from seachange.generators import (
     FloatMutator,
     FloatsGenerator,
@@ -339,3 +340,31 @@ def test_generator_settings_read_only_prefixed_environment(
     assert generator_settings().choice_shuffle is False
     monkeypatch.setenv("SEACHANGE_CHOICE_SHUFFLE", "true")
     assert generator_settings().choice_shuffle is True
+
+
+def test_seed_repeats_the_draws() -> None:
+    """The same seed gives the same draws, across generators and mutators."""
+    seed(5)
+    first = (
+        FloatsGenerator.uniform(0.0, 1.0, size=4),
+        IntegerMutator.random_reset(
+            [0, 1, 2, 3], low=0, high=9, mutation_probability=1.0
+        ),
+    )
+    seed(5)
+    again = (
+        FloatsGenerator.uniform(0.0, 1.0, size=4),
+        IntegerMutator.random_reset(
+            [0, 1, 2, 3], low=0, high=9, mutation_probability=1.0
+        ),
+    )
+    assert first == again
+
+
+def test_different_seeds_give_different_draws() -> None:
+    """Two seeds give two different sequences."""
+    seed(5)
+    five = FloatsGenerator.uniform(0.0, 1.0, size=4)
+    seed(6)
+    six = FloatsGenerator.uniform(0.0, 1.0, size=4)
+    assert five != six

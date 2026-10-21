@@ -75,7 +75,6 @@ Judged fine: `EAOperation`, `Individual` (fields and the `fitness` and `genotype
 
 Each task: tests first (watch them fail), then the change, a CHANGELOG note recorded in DESIGN.md Results for T9, and the README updated where it shows the old call. All areas have tests at 100% branch coverage. Ordered so tasks that touch the same file follow each other, and so the rename (T18) happens before `direction` becomes required (T19).
 
-- **T20 C6: `seed()`.** Files: `generators/_shared.py`, `generators/__init__.py`, `__init__.py`, tests. `seed(n)` resets the shared generator's state in place, so modules that imported `rng` see it. Test: the same seed gives the same draws; different seeds give different ones. Risk low. Cost: about 15 lines.
 - **T21 C7: RevDE without import side effects.** Files: `optimizers/revde.py`, new `examples/a2_revde.py` (the demo), `tests/test_revde.py`. `tests/test_examples.py` runs the new example. Test: importing `revde` in an empty folder creates nothing. Risk low. Cost: about 20 lines moved. Clears a Known problem.
 - **T22 C11: `tags =` replaces.** Files: `individual.py`, `tests/test_individual.py`, plus any merge in `src/` or `examples/` rewritten as `{**ind.tags, ...}`. Risk medium: callers in ARIEL that rely on the merge lose tags silently; the CHANGELOG line must say so plainly. Cost: 1 line changed, docstring rewritten.
 - **T23 C12: `EA.restart()`.** Files: `ea.py`, `tests/test_ea_restart.py`, `tests/test_ea.py`, README. `EA(population, operations, *, ...)` with both arguments required and no `None`; a new class method `EA.restart(source, operations, *, generation=None, ...)` with the same keywords as `EA` takes over the restart branch, including T5's same-file guard. The `(path, generation)` tuple and the "provide either population or restart" error go. Tests: every existing restart test rewritten to the new call, with the same assertions; `EA(None, ops)` is a mypy error. Risk medium: it moves about 40 lines of the constructor. Cost: one new public method, one removed argument. Last of goal 6, so T5 and T14 are settled first.
@@ -93,6 +92,7 @@ Each task: tests first (watch them fail), then the change, a CHANGELOG note reco
 
 ## Open questions
 
+- Should `seed()` (T20) also make the other draws repeatable? `Population.sample` and `shuffle` and two `Archive` methods use Python's `random`; `Archive.random_individual` and `random_population` use SQLite's `random()`, which cannot be seeded. A run whose operators use them is not repeatable from `seed()` alone.
 - Should T21 (C7) also remove the module-level traceback `install()` from `ea.py` (see Known problems)? It changes what users see when their own code raises.
 - The README was approved and merged on 2026-10-21. Its install step has a `<repository URL>` placeholder until a remote exists.
 - No remote exists. On 2026-10-21 the user deferred where to host it. Goal 7 (release-0.1) waits on the answer.

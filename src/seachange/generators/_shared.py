@@ -13,6 +13,29 @@ UNIFORM_MEDIAN = 0.5
 SEED: int = 42
 rng: Generator = np.random.default_rng(SEED)
 
+
+def seed(value: int) -> None:
+    """Restart the shared generator from ``value``.
+
+    The generators, mutators and crossover operators all draw from one
+    numpy generator, seeded with ``SEED`` when seachange is imported. This
+    resets its state in place, so every module that holds it sees the new
+    sequence. It does not cover the other sources of chance:
+    ``Population.sample``, ``Population.shuffle``,
+    ``Archive.tournament_population`` and
+    ``Archive.fitness_percentile_population`` use Python's ``random``
+    module (seed it with ``random.seed``), and
+    ``Archive.random_individual`` and ``Archive.random_population`` use
+    SQLite's ``random()``, which cannot be seeded.
+
+    Parameters
+    ----------
+    value : int
+        The new seed.
+    """
+    rng.bit_generator.state = np.random.default_rng(value).bit_generator.state
+
+
 type Integers = Sequence[int]
 type Floats = Sequence[float]
 

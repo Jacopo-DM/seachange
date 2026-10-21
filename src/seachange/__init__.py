@@ -13,6 +13,7 @@ from seachange.generators import (
     IntegerMutator,
     Integers,
     IntegersGenerator,
+    seed,
 )
 from seachange.individual import (
     Individual,
@@ -51,4 +52,5 @@ __all__: list[str] = [
     # Population
     "Population",
     "config",
+    "seed",
 ]

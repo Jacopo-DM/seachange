@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, cast, overload
 
 import numpy as np
 
-from seachange.generators._shared import rng
+from seachange._rng import rng
 
 from .codecs import Array, Genotype, JSONIterable
 

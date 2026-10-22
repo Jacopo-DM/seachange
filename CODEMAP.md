@@ -15,10 +15,11 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 | `population.py` | 403 | a list of individuals with selection helpers | `Population[G]` |
 | `archive.py` | 590 | read-only queries over a finished run's database | `Archive[G]`, `FitnessStats`, `GenerationRange` |
 | `codecs.py` | 460 | genotype types; turn a genotype into bytes and back; pick a codec for a genotype or by its stored name; the database column type that stores genotypes | `Genotype`, `JSONType`, `JSONPrimitive`, `JSONIterable`, `GenotypeCodec`, `JsonCodec`, `NumpyCodec`, `register_codec`; `codec_for`, `codec_named`, `Array`, `GenotypeColumn`, `UndecodableGenotype`, `decode_error` (not exported) |
+| `_rng.py` | 35 | the two random generators every draw uses (numpy `rng`, Python `py_rng`) and `seed`, which restarts both | internal; `seed` and `SEED` are exported through `generators` and `seachange` |
 | `model.py` | 9 | the frozen base class for records | `Model` (internal) |
 | `crossover.py` | 395 | default crossover functions; arrays in give arrays out | `Crossover` |
 | `generators/` | 928 | random float and integer sequences and their mutations | `FloatsGenerator`, `IntegersGenerator`, `FloatMutator`, `IntegerMutator`, `Floats`, `Integers`, `SEED`, `seed` |
-| `generators/_shared.py` | 75 | the two shared generators (numpy `rng`, Python `py_rng`), `seed`, settings and types, and the steps several mutators share (`swap_genes`, `cut_points`) | internal |
+| `generators/_shared.py` | 106 | settings and types of the generators, and the steps several mutators share (`swap_genes`, `cut_points`) | internal |
 | `optimizers/revde.py` | 75 | Reversible Differential Evolution | `RevDE` |
 
 Lines as of 2026-10-22 (`wc -l`); `generators/` counts `__init__.py`, `sampling.py` and both mutators.
@@ -31,7 +32,7 @@ seachange is pure Python with one boundary: the SQLite database, through SQLMode
 
 ## Import direction
 
-`ea` → `codecs`, `ea_database`, `ea_operation`, `ea_settings`, `individual`, `population`. `ea_database` → `ea_settings`. `ea_operation` → `codecs`, `population`. `individual` → `codecs`. `codecs` → `model`. `archive` → `codecs`, `ea_settings`, `generators._shared`, `individual`, `model`, `population`. `population` → `codecs`, `ea_settings`, `individual` (types only), `generators._shared`. `crossover` → `codecs` (the JSON types), `generators._shared`. `generators/*` → `generators._shared`. `optimizers` imports nothing from the package.
+`ea` → `codecs`, `ea_database`, `ea_operation`, `ea_settings`, `individual`, `population`. `ea_database` → `ea_settings`. `ea_operation` → `codecs`, `population`. `individual` → `codecs`. `codecs` → `model`. `archive` → `_rng`, `codecs`, `ea_settings`, `individual`, `model`, `population`. `population` → `_rng`, `codecs`, `ea_settings`, `individual` (types only). `crossover` → `_rng`, `codecs` (the JSON types). `generators/*` → `_rng`, `generators._shared`. `optimizers` imports nothing from the package.
 
 ## `tests/`
 

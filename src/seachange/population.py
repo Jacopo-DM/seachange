@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, overload
 
-from seachange.generators._shared import py_rng
+from seachange._rng import py_rng
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator

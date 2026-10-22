@@ -41,7 +41,7 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 
 ## Code rules
 
-- Package `seachange` in `src/seachange/`. Users import from `seachange` (its `__init__.py` exports). Subpackages `generators` and `optimizers` import nothing above them except `generators._shared`, which `crossover.py`, `population.py` and `archive.py` also read (its two random generators).
+- Package `seachange` in `src/seachange/`. Users import from `seachange` (its `__init__.py` exports). Subpackages `generators` and `optimizers` import nothing above them except `seachange._rng`, the two random generators every random draw uses (also read by `crossover.py`, `population.py` and `archive.py`). Other modules import a subpackage only through its `__init__.py`; `generators._shared` is for the generators alone.
 - No compatibility shims. No abstraction before two real call sites. Clear names over clever one-liners. No options nobody asked for.
 - Behaviour matches ARIEL's copy until the user approves a change. A lint or type fix that would change behaviour gets a line-level suppression with `known bug` and an entry in PLAN.md Known problems.
 - Approved differences from the templates (user, 2026-10-21): `pytest.ini` adds `filterwarnings` turning `ResourceWarning` and `pytest.PytestUnraisableExceptionWarning` into errors, so a leaked SQLite connection fails the suite (goal 5); `docs/conf.py` adds `sphinx.ext.todo`, so RevDE's numpy `Todo` docstring section builds under `-W` (goal 3).

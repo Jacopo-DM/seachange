@@ -4,11 +4,11 @@ from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
+from seachange._rng import rng
 from seachange.generators._shared import (
     UNIFORM_MEDIAN,
     Floats,
     cut_points,
-    rng,
     swap_genes,
 )
 

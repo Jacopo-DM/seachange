@@ -9,9 +9,9 @@ from sqlalchemy import Engine, create_engine, func
 from sqlmodel import Session, col, select
 from sqlmodel.sql.expression import SelectOfScalar
 
+from seachange._rng import py_rng
 from seachange.codecs import Genotype
 from seachange.ea_settings import Direction
-from seachange.generators._shared import py_rng
 from seachange.individual import Individual, check_rows
 from seachange.model import Model
 from seachange.population import Population

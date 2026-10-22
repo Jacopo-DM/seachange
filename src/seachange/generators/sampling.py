@@ -5,10 +5,10 @@ from typing import cast, overload
 
 import numpy as np
 
+from seachange._rng import rng
 from seachange.generators._shared import (
     Floats,
     Integers,
-    rng,
     settings,
 )
 

@@ -27,6 +27,7 @@ Databases that `ariel.ec` wrote open in seachange's `Archive` and `EA.restart` a
     - `EA(None, ops, restart=(path, 50), ...)` becomes `EA.restart(path, ops, generation=50, ...)`.
     - A missing `population` or `operations` is now a `TypeError`, not a `ValueError`.
 - **A restart starts from the survivors of the chosen generation.** It used to include the individuals retired during that generation as well; on one-max, a restart from generation 50 started with 30 individuals instead of the run's 20.
+- **`IntegerMutator.scramble` draws fewer random numbers.** It used to shuffle a throwaway copy of the segment before the shuffle that makes the child; that first shuffle changed nothing but used up random draws. It is gone, so a seeded run that calls `scramble` gives different results from ARIEL's copy (and from earlier seachange) after its first scramble. The children are scrambled the same way as before.
 - **One keyword for the fitness direction**, `direction="max"` or `direction="min"`:
     - `EA(..., is_maximisation=True)` becomes `EA(..., direction="max")`, and `config.is_maximisation` becomes `config.direction`.
     - `population.sort(sort="min")` and `population.best(sort="min")` become `direction="min"`.

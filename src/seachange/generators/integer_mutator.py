@@ -189,9 +189,6 @@ class IntegerMutator:
         arr: list[int] = list(individual)
         lo, hi = cut_points(len(arr))
         segment: list[int] = arr[lo:hi]
-        rng.shuffle(
-            np.array(segment)
-        )  # shuffle produces NDArray; re-assign below
         shuffled: list[int] = cast(
             "list[int]",
             rng.permutation(segment).tolist(),

@@ -18,13 +18,13 @@ One row per public module of `seachange`. Adding a module means adding a row; `t
 
 | Module | What it does | Notebook |
 |---|---|---|
-| `ea` | runs the generations and saves each one | none yet |
-| `ea_operation` | wraps a step function for the engine | none yet |
-| `ea_settings` | run settings, read from `SEACHANGE_` variables | none yet |
-| `ea_database` | creates the run's database file | none yet |
-| `population` | a list of individuals with sorting and filters | none yet |
-| `individual` | one individual: genotype, fitness, alive | none yet |
-| `model` | the base class of the records | none yet |
+| `ea` | runs the generations and saves each one | [engine.ipynb](engine.ipynb) |
+| `ea_operation` | wraps a step function for the engine | [engine.ipynb](engine.ipynb) |
+| `ea_settings` | run settings, read from `SEACHANGE_` variables | [engine.ipynb](engine.ipynb) |
+| `ea_database` | creates the run's database file | [engine.ipynb](engine.ipynb) |
+| `population` | a list of individuals with sorting and filters | [engine.ipynb](engine.ipynb) |
+| `individual` | one individual: genotype, fitness, alive | [engine.ipynb](engine.ipynb) |
+| `model` | the base class of the records | [engine.ipynb](engine.ipynb) |
 | `archive` | queries a finished run | none yet |
 | `codecs` | how genotypes are stored | none yet |
 | `generators` | random genotypes and mutations | none yet |

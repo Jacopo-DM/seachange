@@ -25,7 +25,7 @@ One row per public module of `seachange`. Adding a module means adding a row; `t
 | `population` | a list of individuals with sorting and filters | [engine.ipynb](engine.ipynb) |
 | `individual` | one individual: genotype, fitness, alive | [engine.ipynb](engine.ipynb) |
 | `model` | the base class of the records | [engine.ipynb](engine.ipynb) |
-| `archive` | queries a finished run | none yet |
+| `archive` | queries a finished run | [archive.ipynb](archive.ipynb) |
 | `codecs` | how genotypes are stored | none yet |
 | `generators` | random genotypes and mutations | none yet |
 | `crossover` | combining two parents into two children | none yet |

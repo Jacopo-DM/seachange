@@ -48,7 +48,7 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 
 ## Git and approvals
 
-- The default branch is `main` (renamed from `master`, which `uv-cr-lib` made, on 2026-10-21, because `ci.yml` and `docs.yml` run on pushes to `main`). Work goes on feature branches from `main`. No remote yet.
+- The default branch is `main` (renamed from `master`, which `uv-cr-lib` made, on 2026-10-21, because `ci.yml` and `docs.yml` run on pushes to `main`). Work goes on feature branches from `main`. Remote `origin` is `git@github.com:Jacopo-DM/seachange.git` (public, created by the user 2026-10-22); nothing has been pushed yet.
 
 ## Data and secrets
 

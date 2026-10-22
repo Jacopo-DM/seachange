@@ -6,7 +6,9 @@ import numpy as np
 
 from seachange.generators._shared import (
     Integers,
+    cut_points,
     rng,
+    swap_genes,
 )
 
 if TYPE_CHECKING:
@@ -125,13 +127,7 @@ class IntegerMutator:
         Integers
             A new genotype with swapped genes.
         """
-        arr: list[int] = list(individual)
-        n: int = len(arr)
-        for idx in range(n):
-            if rng.random() < mutation_probability:
-                jdx: int = int(rng.integers(0, n))
-                arr[idx], arr[jdx] = arr[jdx], arr[idx]
-        return arr
+        return swap_genes(individual, mutation_probability)
 
     @staticmethod
     def inversion(
@@ -160,13 +156,7 @@ class IntegerMutator:
         if rng.random() >= mutation_probability:
             return list(individual)
         arr: list[int] = list(individual)
-        n: int = len(arr)
-        lo, hi = sorted(
-            cast(
-                "list[int]",
-                rng.choice(np.arange(n + 1), size=2, replace=False).tolist(),
-            ),
-        )
+        lo, hi = cut_points(len(arr))
         arr[lo:hi] = arr[lo:hi][::-1]
         return arr
 
@@ -197,13 +187,7 @@ class IntegerMutator:
         if rng.random() >= mutation_probability:
             return list(individual)
         arr: list[int] = list(individual)
-        n: int = len(arr)
-        lo, hi = sorted(
-            cast(
-                "list[int]",
-                rng.choice(np.arange(n + 1), size=2, replace=False).tolist(),
-            ),
-        )
+        lo, hi = cut_points(len(arr))
         segment: list[int] = arr[lo:hi]
         rng.shuffle(
             np.array(segment)

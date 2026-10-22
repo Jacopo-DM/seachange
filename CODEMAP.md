@@ -18,7 +18,7 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 | `model.py` | 9 | the frozen base class for records | `Model` (internal) |
 | `crossover.py` | 395 | default crossover functions; arrays in give arrays out | `Crossover` |
 | `generators/` | 928 | random float and integer sequences and their mutations | `FloatsGenerator`, `IntegersGenerator`, `FloatMutator`, `IntegerMutator`, `Floats`, `Integers`, `SEED`, `seed` |
-| `generators/_shared.py` | 75 | the two shared generators (numpy `rng`, Python `py_rng`), `seed`, settings and types | internal |
+| `generators/_shared.py` | 75 | the two shared generators (numpy `rng`, Python `py_rng`), `seed`, settings and types, and the steps several mutators share (`swap_genes`, `cut_points`) | internal |
 | `optimizers/revde.py` | 75 | Reversible Differential Evolution | `RevDE` |
 
 Lines as of 2026-10-22 (`wc -l`); `generators/` counts `__init__.py`, `sampling.py` and both mutators.

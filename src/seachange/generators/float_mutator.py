@@ -7,7 +7,9 @@ import numpy as np
 from seachange.generators._shared import (
     UNIFORM_MEDIAN,
     Floats,
+    cut_points,
     rng,
+    swap_genes,
 )
 
 if TYPE_CHECKING:
@@ -229,13 +231,7 @@ class FloatMutator:
         Floats
             A new genotype with swapped genes.
         """
-        arr: list[float] = list(individual)
-        n: int = len(arr)
-        for idx in range(n):
-            if rng.random() < mutation_probability:
-                jdx: int = int(rng.integers(0, n))
-                arr[idx], arr[jdx] = arr[jdx], arr[idx]
-        return arr
+        return swap_genes(individual, mutation_probability)
 
     @staticmethod
     def inversion(
@@ -264,16 +260,6 @@ class FloatMutator:
         if rng.random() >= mutation_probability:
             return list(individual)
         arr: list[float] = list(individual)
-        n: int = len(arr)
-        lo, hi = sorted(
-            cast(
-                "list[int]",
-                rng.choice(
-                    np.arange(n + 1),
-                    size=2,
-                    replace=False,
-                ).tolist(),
-            ),
-        )
+        lo, hi = cut_points(len(arr))
         arr[lo:hi] = arr[lo:hi][::-1]
         return arr

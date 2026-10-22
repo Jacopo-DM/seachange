@@ -1,7 +1,12 @@
-"""Shared state of the generators and mutators: the RNG, settings, types."""
+"""Shared state of the generators and mutators: the RNG, settings, types.
+
+Also the two steps that several mutators share: swapping genes and
+picking cut points.
+"""
 
 import random
 from collections.abc import Sequence
+from typing import cast
 
 import numpy as np
 from numpy.random import Generator
@@ -38,6 +43,58 @@ def seed(value: int) -> None:
 
 type Integers = Sequence[int]
 type Floats = Sequence[float]
+
+
+# -- Steps shared by the mutators ----------------------------------------------
+
+
+def swap_genes[T](
+    individual: Sequence[T], mutation_probability: float
+) -> list[T]:
+    """Swap each gene, with some probability, with a randomly chosen gene.
+
+    Parameters
+    ----------
+    individual : Sequence[T]
+        The genotype to mutate.
+    mutation_probability : float
+        Per-gene probability of initiating a swap.
+
+    Returns
+    -------
+    list[T]
+        A new genotype with swapped genes.
+    """
+    arr: list[T] = list(individual)
+    n: int = len(arr)
+    for idx in range(n):
+        if rng.random() < mutation_probability:
+            jdx: int = int(rng.integers(0, n))
+            arr[idx], arr[jdx] = arr[jdx], arr[idx]
+    return arr
+
+
+def cut_points(n: int) -> tuple[int, int]:
+    """Pick two different cut points of a sequence of length ``n``.
+
+    Parameters
+    ----------
+    n : int
+        The length of the sequence.
+
+    Returns
+    -------
+    tuple[int, int]
+        ``lo < hi``, both in ``[0, n]``; ``seq[lo:hi]`` is the segment
+        between them.
+    """
+    lo, hi = sorted(
+        cast(
+            "list[int]",
+            rng.choice(np.arange(n + 1), size=2, replace=False).tolist(),
+        ),
+    )
+    return lo, hi
 
 
 # -- Settings ------------------------------------------------------------------

@@ -28,5 +28,5 @@ One row per public module of `seachange`. Adding a module means adding a row; `t
 | `archive` | queries a finished run | [archive.ipynb](archive.ipynb) |
 | `codecs` | how genotypes are stored | [genotypes.ipynb](genotypes.ipynb) |
 | `generators` | random genotypes and mutations | [generators.ipynb](generators.ipynb) |
-| `crossover` | combining two parents into two children | none yet |
+| `crossover` | combining two parents into two children | [crossover.ipynb](crossover.ipynb) |
 | `optimizers` | RevDE | none yet |

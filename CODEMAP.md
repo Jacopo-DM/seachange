@@ -18,11 +18,11 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 | `_rng.py` | 35 | the two random generators every draw uses (numpy `rng`, Python `py_rng`) and `seed`, which restarts both | internal; `seed` and `SEED` are exported through `generators` and `seachange` |
 | `model.py` | 9 | the frozen base class for records | `Model` (internal) |
 | `crossover.py` | 395 | default crossover functions; arrays in give arrays out | `Crossover` |
-| `generators/` | 928 | random float and integer sequences and their mutations | `FloatsGenerator`, `IntegersGenerator`, `FloatMutator`, `IntegerMutator`, `Floats`, `Integers`, `SEED`, `seed` |
+| `generators/` | 899 | random float and integer sequences and their mutations | `FloatsGenerator`, `IntegersGenerator`, `FloatMutator`, `IntegerMutator`, `Floats`, `Integers`, `SEED`, `seed` |
 | `generators/_shared.py` | 106 | settings and types of the generators, and the steps several mutators share (`swap_genes`, `cut_points`) | internal |
-| `optimizers/revde.py` | 75 | Reversible Differential Evolution | `RevDE` |
+| `optimizers/revde.py` | 66 | Reversible Differential Evolution | `RevDE` |
 
-Lines as of 2026-10-22 (`wc -l`); `generators/` counts `__init__.py`, `sampling.py` and both mutators.
+Lines as of 2026-10-22 (`wc -l`); `generators/` counts `__init__.py`, `sampling.py` and both mutators. `src/seachange/`, `generators/` and `optimizers/` each have a `README.md`: what the package does, what it assumes, and what it must never import (they ship in the wheel).
 
 `G` is the genotype type, for type checkers only; it defaults to `Genotype`, and `Individual[X]` is `Individual` at run time.
 

@@ -107,6 +107,10 @@ Why: a numpy array genotype cannot be stored today (assigning one crashes in the
     - float16: half the size in 0.04 ms, but it rounds every weight, so the stored network is not the one evaluated. Left for a later opt-in codec, never a default.
     - A child stored as the XOR of its bits with its parent's, then zlib: 14.1% of raw when mutation changes 10% of the weights, 73.2% (with byte shuffle) when it nudges all of them. Deferred, not rejected: reading a genotype means rebuilding it from its ancestors, crossover children have two parents, and one bad row breaks every descendant.
 
+- Goal 10 S2, rejected 2026-10-22 (user confirmed): moving `GenotypeColumn`, `decode_error` and `UndecodableGenotype` out of `codecs.py` (460 lines) into a module of their own. `tests/test_codecs.py` and `tests/test_individual.py` import them from `seachange.codecs`, and a restructure keeps the tests unchanged.
+- Goal 10 S3, rejected 2026-10-22 (user confirmed): splitting `archive.py` (590 lines), `ea.py` (498) or `population.py` (403). Each is one class; spreading a class over several files makes it harder to hold in context, not easier. Much of their length is numpy docstrings.
+- Goal 10 S4, rejected 2026-10-22 (user confirmed): cutting the 6 seachange imports of `archive.py` and `ea.py`. Each import is a real collaborator (`codecs`, `ea_settings`, `individual`, `population`, the random generators, and `model` or `ea_database` and `ea_operation`); routing one through another module only adds a layer. `seachange/__init__.py` imports 9 because it is the package's entry point.
+
 ## Results
 
 | Date | Task | Goal | Change | Measured effect |

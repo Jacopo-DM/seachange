@@ -17,7 +17,7 @@ Order (approved 2026-10-21): 1 to 5 first, because they are small and fix or pin
 | 7 | release-0.1 | Done 2026-10-21: licence (T8), CHANGELOG (T9), build-and-install check (T10), repository URL (T11), plus T24 and T25 (a1bb034 to c6fac55). | new behaviour | met: `uv build` makes both archives; a throwaway environment installs the wheel and the one-max example prints `best fitness 20.0 of 20`; docs build with `-W`; no placeholders in the README; CHANGELOG lists every change | done 2026-10-21 | 2026-10-21 |
 | 8 | genotype-storage | Done 2026-10-21 by T26 to T32 (475c010 to the T32 commit): a genotype comes back as the type it went in (numpy arrays keep dtype and shape), arrays are stored as raw bytes through codecs, and the genotype type reaches every engine class. Spec in DESIGN.md. | new behaviour | met 2026-10-21: (a) round trips through `EA`, `EA.restart` and `Archive` pass for numpy arrays (Hypothesis), JSON values and a user codec; (b) `tools/bench_genotypes.py`: 0.015 s of storage per generation (target 0.05 s, was 0.52 s) and 86 MB (target 90 MB, was 435 MB), 3 runs alike; (c) a database with the pre-codec table opens in `Archive` and restarts | done 2026-10-21 | 2026-10-21 |
 | 9 | functional-notebooks | Notebooks in `tests/functional/` that show each feature area working: a tutorial, a picture or table to judge by eye, and a smoke test run by `tools/run_notebooks.py` (pre-commit runs the staged ones, pre-push all). Six approved 2026-10-22: engine, archive, genotypes, generators, crossover, revde; matplotlib added as a dev dependency (user, 2026-10-22). | improvement, behaviour unchanged | met 2026-10-22: every public module has a row in `tests/functional/README.md` naming one of the six notebooks (none says none yet), held by `tests/test_functional_notebooks.py`; all six PASS in `tools/run_notebooks.py` (about 13 s) | done 2026-10-22 | 2026-10-22 |
-| 10 | restructure | Make each feature understandable and changeable with few files in context; behaviour unchanged (`/zz-03-restructure-codebase`). | improvement, behaviour unchanged | fewer files over 400 lines, fewer modules importing more than 5 seachange modules, a lower duplicated-lines percentage, and every module reached only through its package's entry point, all from `tools/measure_structure.py`; every test passes unchanged | in progress: task list waiting for approval | 2026-10-22 |
+| 10 | restructure | Make each feature understandable and changeable with few files in context; behaviour unchanged (`/zz-03-restructure-codebase`). | improvement, behaviour unchanged | fewer files over 400 lines, fewer modules importing more than 5 seachange modules, a lower duplicated-lines percentage, and every module reached only through its package's entry point, all from `tools/measure_structure.py`; every test passes unchanged | in progress: R1 to R4 approved 2026-10-22 | 2026-10-22 |
 
 After 0.1 (planned, not yet goals with measures): robot genotypes (ARIEL's tree, CPPN and NDE) moving here, a database backend other than SQLite (HDF5 for large arrays is a candidate; DESIGN.md Rejected approaches), and ARIEL switching to seachange (work in the ARIEL repo). The switch pays off first: CHANGELOG.md is already written as its migration guide. Before it, ask the ARIEL session why 3 of ARIEL's 1451 tests did not pass on 2026-10-21 (it reported 1448 passing without the cause). Scope these with /zz-02-project-plan.
 
@@ -63,7 +63,7 @@ Approved 2026-10-21. One task per commit.
 - T31 Docs and CHANGELOG: a docs page on codecs with a PyTorch codec as an example (no torch dependency), README note, CHANGELOG entries, and the ARIEL migration step. Status: done 2026-10-21 (`docs/genotypes.md`, `examples/a3_numpy_genotypes.py`, README Genotypes section, CHANGELOG "Moving from `ariel.ec`").
 - T32 Measure goal 8 with T26 and record it in DESIGN.md Results. Status: done 2026-10-21 (all three parts met).
 
-### Goal 10: restructure, proposed 2026-10-22, waiting for approval
+### Goal 10: restructure, R1 to R4 approved 2026-10-22
 
 Findings (2026-10-22):
 
@@ -83,7 +83,7 @@ Tasks, ranked by benefit over risk. Each keeps every test unchanged; R1 and R2 a
 - R3 Remove the empty `Notes` and `Todo` sections from `optimizers/revde.py` (F4), drop `sphinx.ext.todo` from `docs/conf.py` so it matches the template again, and remove that approved difference from CLAUDE.md. Why: one less exception to remember. Verify: the `-W` docs build passes. Risk low; it removes an exception you approved, so it needs your yes. Status: proposed.
 - R4 When done: a README in `src/seachange/`, `generators/` and `optimizers/` (what it does, what it assumes, what it must never import), CODEMAP.md regenerated, the entry-point rule in CLAUDE.md, the numbers rerun. Status: proposed.
 
-Proposed skips, each recorded in DESIGN.md Rejected approaches once you confirm:
+Skips, confirmed by the user 2026-10-22: S2 to S4 are in DESIGN.md Rejected approaches; S1 is left for later (Tier 3).
 
 - S1 Split `generators/sampling.py` into an integer and a float module, as the mutators are. It would bring one file under 400 lines, but `seachange.generators.sampling` is an import path that ARIEL's copy shares (`ariel.ec.generators.sampling`), so moving it is an interface change.
 - S2 Move `GenotypeColumn` (and `decode_error`, `UndecodableGenotype`) out of `codecs.py`. `tests/test_codecs.py` and `tests/test_individual.py` import them from `seachange.codecs`, so the tests would have to change.
@@ -93,6 +93,8 @@ Proposed skips, each recorded in DESIGN.md Rejected approaches once you confirm:
 What the measures would show after R1 to R3: clones 2 to 0 (0.58% to 0%), reaches past an entry point 3 to 0, files over 400 lines unchanged at 6, modules importing more than 5 unchanged at 3 (S1 to S4 explain why).
 
 ### Tier 3: listed, not planned
+
+- Goal 10 skip S1, to do later (user, 2026-10-22): split `generators/sampling.py` (416 lines) into an integer and a float module, as the mutators are. It changes the import path `seachange.generators.sampling`, which ARIEL's copy shares, so it needs a CHANGELOG line and fits best when ARIEL switches to seachange.
 
 - Typing a `Sequence[int]` size (a numpy shape, which gives nested lists) correctly. No caller in this repo uses it, and goal 2 does not need it.
 - Porting fixes back to ARIEL's copy: done in the ARIEL repo on 2026-10-21 for goal 1 (T5), goal 2 (T6) and the restart engine disposal (T2), ARIEL commits 6d8797d, 462f7af and a29589b on its `main` (not pushed). The goal 6 interface changes are not ported; ARIEL takes them when it switches to seachange.
@@ -106,7 +108,7 @@ Goal 8's three questions were answered on 2026-10-21 (DESIGN.md Specs, goal 8). 
 
 - Audit D1/E3: `.github/workflows/ci.yml` runs its four gates as `uv run ruff ...`, `uv run mypy .`, `uv run pytest` without `--locked` (Python compliance check 15). `uv sync --locked` runs first, so a stale lock still fails. The file is identical to `~/Functions/_rsync/python/.github/workflows/ci.yml`, so the fix belongs there (edited on the Mac, whose `~/Functions` the Lenovo pulls), then `rsync-sync pull python` here. Waiting on the user.
 - Audit E5: there is no `.github/dependabot.yml`, though the comments in `ci.yml` and `docs.yml` say "let Dependabot bump them". Should the template gain one covering `github-actions` and `uv`? Waiting on the user.
-- Goal 10 finding F5 (2026-10-22): `IntegerMutator.scramble` (`generators/integer_mutator.py`) calls `rng.shuffle(np.array(segment))` on a throwaway copy before the real shuffle. The call changes nothing in the child but consumes random draws, so deleting it changes every seeded result that follows a scramble (behaviour change). Delete it, or keep it so seeded runs match ARIEL's copy? Waiting on the user.
+- Goal 10 finding F5 (2026-10-22): `IntegerMutator.scramble` (`generators/integer_mutator.py`) calls `rng.shuffle(np.array(segment))` on a throwaway copy before the real shuffle. The call changes nothing in the child but consumes random draws, so deleting it changes every seeded result that follows a scramble (behaviour change). Answered 2026-10-22 (user): delete it, as its own commit after R1 to R4, with a CHANGELOG line saying seeded results change after a scramble.
 
 ## Known problems
 

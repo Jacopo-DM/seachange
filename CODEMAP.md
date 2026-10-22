@@ -4,24 +4,30 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 
 ## `src/seachange/`
 
-| Module | Purpose | Public interface |
-|---|---|---|
-| `__init__.py` | package exports | every name below except `Operation`, `setup_database` and `RevDE`, which are imported from their modules |
-| `ea.py` | the generational engine: runs the operations once per generation and commits to SQLite; restarts from a database | `EA[G]` |
-| `ea_operation.py` | wraps a `Population -> Population` function as a pipeline step; `EA` calls each step's `run` | `Operation[G]`, `EAOperation[**P, G]` |
-| `ea_settings.py` | defaults for the engine, overridable from the environment | `EASettings`, `DBHandlingMode`, `Direction`, `config` |
-| `ea_database.py` | creates the database file | `setup_database` |
-| `individual.py` | one row of the database: genotype, fitness, tags, birth and death | `Individual[G]`; `check_rows` (used by `ea` and `archive`, not exported) |
-| `population.py` | a list of individuals with selection helpers | `Population[G]` |
-| `archive.py` | read-only queries over a finished run's database | `Archive[G]`, `FitnessStats`, `GenerationRange` |
-| `codecs.py` | genotype types; turn a genotype into bytes and back; pick a codec for a genotype or by its stored name; the database column type that stores genotypes | `Genotype`, `JSONType`, `JSONPrimitive`, `JSONIterable`, `GenotypeCodec`, `JsonCodec`, `NumpyCodec`, `register_codec`; `codec_for`, `codec_named`, `Array`, `GenotypeColumn`, `UndecodableGenotype`, `decode_error` (not exported) |
-| `model.py` | the frozen base class for records | `Model` (internal) |
-| `crossover.py` | default crossover functions; arrays in give arrays out | `Crossover` |
-| `generators/` | random float and integer sequences and their mutations | `FloatsGenerator`, `IntegersGenerator`, `FloatMutator`, `IntegerMutator`, `Floats`, `Integers`, `SEED`, `seed` |
-| `generators/_shared.py` | the two shared generators (numpy `rng`, Python `py_rng`), `seed`, settings and types | internal |
-| `optimizers/revde.py` | Reversible Differential Evolution | `RevDE` |
+| Module | Lines | Purpose | Public interface |
+|---|---|---|---|
+| `__init__.py` | 60 | package exports | every name below except `Operation`, `setup_database` and `RevDE`, which are imported from their modules |
+| `ea.py` | 498 | the generational engine: runs the operations once per generation and commits to SQLite; restarts from a database | `EA[G]` |
+| `ea_operation.py` | 259 | wraps a `Population -> Population` function as a pipeline step; `EA` calls each step's `run` | `Operation[G]`, `EAOperation[**P, G]` |
+| `ea_settings.py` | 81 | defaults for the engine, overridable from the environment | `EASettings`, `DBHandlingMode`, `Direction`, `config` |
+| `ea_database.py` | 59 | creates the database file | `setup_database` |
+| `individual.py` | 255 | one row of the database: genotype, fitness, tags, birth and death | `Individual[G]`; `check_rows` (used by `ea` and `archive`, not exported) |
+| `population.py` | 403 | a list of individuals with selection helpers | `Population[G]` |
+| `archive.py` | 590 | read-only queries over a finished run's database | `Archive[G]`, `FitnessStats`, `GenerationRange` |
+| `codecs.py` | 460 | genotype types; turn a genotype into bytes and back; pick a codec for a genotype or by its stored name; the database column type that stores genotypes | `Genotype`, `JSONType`, `JSONPrimitive`, `JSONIterable`, `GenotypeCodec`, `JsonCodec`, `NumpyCodec`, `register_codec`; `codec_for`, `codec_named`, `Array`, `GenotypeColumn`, `UndecodableGenotype`, `decode_error` (not exported) |
+| `model.py` | 9 | the frozen base class for records | `Model` (internal) |
+| `crossover.py` | 395 | default crossover functions; arrays in give arrays out | `Crossover` |
+| `generators/` | 928 | random float and integer sequences and their mutations | `FloatsGenerator`, `IntegersGenerator`, `FloatMutator`, `IntegerMutator`, `Floats`, `Integers`, `SEED`, `seed` |
+| `generators/_shared.py` | 75 | the two shared generators (numpy `rng`, Python `py_rng`), `seed`, settings and types | internal |
+| `optimizers/revde.py` | 75 | Reversible Differential Evolution | `RevDE` |
+
+Lines as of 2026-10-22 (`wc -l`); `generators/` counts `__init__.py`, `sampling.py` and both mutators.
 
 `G` is the genotype type, for type checkers only; it defaults to `Genotype`, and `Individual[X]` is `Individual` at run time.
+
+## Boundaries
+
+seachange is pure Python with one boundary: the SQLite database, through SQLModel and SQLAlchemy. The contract is the `individual` table that `Individual` defines (`id`, `alive`, `time_of_birth`, `time_of_death`, `requires_eval`, `fitness_`, `requires_init`, `genotype_`, `tags_`). `genotype_` holds bytes: a codec's name, a zero byte, and that codec's output (for `numpy`, a complete `.npy` file); text in that column is read as JSON from databases written before codecs (and by ARIEL's `ariel.ec`). `tags_` is a JSON column. `EA` writes the file, `Archive` and `EA.restart` only read it, and `check_rows` refuses rows that do not validate. No FFI, IPC or generated bindings.
 
 ## Import direction
 
@@ -37,4 +43,4 @@ Functional notebooks, one per feature area, committed with their outputs and run
 
 ## `docs/`, `tools/`, `.github/`, `.vscode/`
 
-`docs/` is the Sphinx site (`conf.py`, `index.md`, `genotypes.md` on how genotypes are stored and typed, `reference.md`). `tools/compress_images.py` and `tools/run_notebooks.py` are the shared templates the pre-commit hooks run; `run_notebooks.py` runs the functional notebooks (staged ones at commit, all at push), and its own test lives in the template repo (`~/Functions/_rsync/python-tests/`), not here. `tools/bench_genotypes.py` is goal 8's benchmark: seconds of database work per generation and database size for 100 genotypes of 10,000 weights. `.github/workflows/ci.yml` runs format, lint, mypy and pytest; `docs.yml` builds the docs. `.vscode/` holds the editor settings and tasks (format, lint, mypy, ty, pytest, docs preview and build) copied from the template `~/Functions/_rsync/vscode/` by `pull-vscode`; identical to it.
+`docs/` is the Sphinx site (`conf.py`, `index.md`, `genotypes.md` on how genotypes are stored and typed, `reference.md`). `tools/compress_images.py` and `tools/run_notebooks.py` are the shared templates the pre-commit hooks run; `run_notebooks.py` runs the functional notebooks (staged ones at commit, all at push), and its own test lives in the template repo (`~/Functions/_rsync/python-tests/`), not here. `tools/measure_structure.py` prints goal 10's structure numbers (files over 400 lines, wide imports, imports past an entry point, jscpd clones). `tools/bench_genotypes.py` is goal 8's benchmark: seconds of database work per generation and database size for 100 genotypes of 10,000 weights. `.github/workflows/ci.yml` runs format, lint, mypy and pytest; `docs.yml` builds the docs. `.vscode/` holds the editor settings and tasks (format, lint, mypy, ty, pytest, docs preview and build) copied from the template `~/Functions/_rsync/vscode/` by `pull-vscode`; identical to it.

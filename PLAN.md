@@ -17,6 +17,7 @@ Order (approved 2026-10-21): 1 to 5 first, because they are small and fix or pin
 | 7 | release-0.1 | Done 2026-10-21: licence (T8), CHANGELOG (T9), build-and-install check (T10), repository URL (T11), plus T24 and T25 (a1bb034 to c6fac55). | new behaviour | met: `uv build` makes both archives; a throwaway environment installs the wheel and the one-max example prints `best fitness 20.0 of 20`; docs build with `-W`; no placeholders in the README; CHANGELOG lists every change | done 2026-10-21 | 2026-10-21 |
 | 8 | genotype-storage | Done 2026-10-21 by T26 to T32 (475c010 to the T32 commit): a genotype comes back as the type it went in (numpy arrays keep dtype and shape), arrays are stored as raw bytes through codecs, and the genotype type reaches every engine class. Spec in DESIGN.md. | new behaviour | met 2026-10-21: (a) round trips through `EA`, `EA.restart` and `Archive` pass for numpy arrays (Hypothesis), JSON values and a user codec; (b) `tools/bench_genotypes.py`: 0.015 s of storage per generation (target 0.05 s, was 0.52 s) and 86 MB (target 90 MB, was 435 MB), 3 runs alike; (c) a database with the pre-codec table opens in `Archive` and restarts | done 2026-10-21 | 2026-10-21 |
 | 9 | functional-notebooks | Notebooks in `tests/functional/` that show each feature area working: a tutorial, a picture or table to judge by eye, and a smoke test run by `tools/run_notebooks.py` (pre-commit runs the staged ones, pre-push all). Six approved 2026-10-22: engine, archive, genotypes, generators, crossover, revde; matplotlib added as a dev dependency (user, 2026-10-22). | improvement, behaviour unchanged | met 2026-10-22: every public module has a row in `tests/functional/README.md` naming one of the six notebooks (none says none yet), held by `tests/test_functional_notebooks.py`; all six PASS in `tools/run_notebooks.py` (about 13 s) | done 2026-10-22 | 2026-10-22 |
+| 10 | restructure | Make each feature understandable and changeable with few files in context; behaviour unchanged (`/zz-03-restructure-codebase`). | improvement, behaviour unchanged | fewer files over 400 lines, fewer modules importing more than 5 seachange modules, a lower duplicated-lines percentage, and every module reached only through its package's entry point, all from `tools/measure_structure.py`; every test passes unchanged | in progress: task list waiting for approval | 2026-10-22 |
 
 After 0.1 (planned, not yet goals with measures): robot genotypes (ARIEL's tree, CPPN and NDE) moving here, a database backend other than SQLite (HDF5 for large arrays is a candidate; DESIGN.md Rejected approaches), and ARIEL switching to seachange (work in the ARIEL repo). The switch pays off first: CHANGELOG.md is already written as its migration guide. Before it, ask the ARIEL session why 3 of ARIEL's 1451 tests did not pass on 2026-10-21 (it reported 1448 passing without the cause). Scope these with /zz-02-project-plan.
 
@@ -39,6 +40,14 @@ Goal measurements, 2026-10-21, Linux (host `johnny-dm`), Python 3.13, uv 0.13.1:
 - Goal 8, 2026-10-21, a scratch script (T26 makes it `tools/bench_genotypes.py`): 100 individuals of 10,000 float32 weights stored as lists, 20 generations, each replacing every parent by a mutated child. 0.570 s per generation, of which the mutation itself is about 0.05 s, so genotype storage is about 0.52 s; the database reaches 435 MB for 2,100 individuals (207 KB each, against 40 KB as raw float32). Projected to 1,000 generations: about 9 minutes of storage and 21 GB. Confirmed by `tools/bench_genotypes.py` (T26), which times each `step()` minus the mutation: 0.530, 0.530 and 0.531 s of storage per generation and 435 MB in its 3 runs, about 36 s in all.
 - Goal 5: `uv run --no-sync pytest -q -p no:cacheprovider -W default` reports 73 warnings in 4 of 5 runs and 79 in 1 (median 73, range 73 to 79), all `ResourceWarning: unclosed database`. They come from three test files: `test_archive.py` (31 when run alone), `test_ea.py` (14) and `test_ea_restart.py` (11). The count varies with garbage-collection timing; the target is 0, so the noise does not matter. With `-W error::ResourceWarning` alone the suite still passed (83 warnings, checked after T2), so that flag does not measure this. After T3: 0 warnings in 3 runs, and the `pytest.ini` filter fails the suite when one leaking `create_engine` call is put back (checked once, then restored).
 
+Goal 10, 2026-10-22, `uv run --no-sync python tools/measure_structure.py` on `main` at 6e892bb (branch `restructure`):
+
+- 46 tracked Python files, 8,955 lines: `src` 18 files 4,148 lines, `tests` 22 files 3,370, `examples` 3 files 265, `tools` 3 files 1,172 (before `tools/measure_structure.py` itself).
+- Files over 400 lines: 6, not counting the two template copies `tools/compress_images.py` (483) and `tools/run_notebooks.py` (495): `src/seachange/archive.py` 590, `src/seachange/ea.py` 498, `src/seachange/codecs.py` 460, `src/seachange/generators/sampling.py` 416, `src/seachange/population.py` 403, `tests/test_archive.py` 527.
+- Modules importing more than 5 other seachange modules: 3. `seachange` (the package `__init__.py`, 9: it is the entry point), `seachange.archive` 6 and `seachange.ea` 6. The largest module, `archive.py`, imports 6.
+- Imports past another package's entry point: 3, all of `seachange.generators._shared` for its random generators: from `archive.py` and `population.py` (`py_rng`) and `crossover.py` (`rng`). CLAUDE.md allows them today.
+- jscpd over `src` (`--min-lines 8 --min-tokens 70`): 2 clones, 0.58% of lines duplicated.
+
 ## Tasks
 
 Approved 2026-10-21. One task per commit.
@@ -54,6 +63,35 @@ Approved 2026-10-21. One task per commit.
 - T31 Docs and CHANGELOG: a docs page on codecs with a PyTorch codec as an example (no torch dependency), README note, CHANGELOG entries, and the ARIEL migration step. Status: done 2026-10-21 (`docs/genotypes.md`, `examples/a3_numpy_genotypes.py`, README Genotypes section, CHANGELOG "Moving from `ariel.ec`").
 - T32 Measure goal 8 with T26 and record it in DESIGN.md Results. Status: done 2026-10-21 (all three parts met).
 
+### Goal 10: restructure, proposed 2026-10-22, waiting for approval
+
+Findings (2026-10-22):
+
+- F1 clone: `generators/float_mutator.py` 232-242 (`FloatMutator.swap`) and `generators/integer_mutator.py` 128-138 (`IntegerMutator.swap`) are the same loop: for each gene, with probability p, swap it with a random gene. Only the element type differs. Meant to change together.
+- F2 clone: `generators/integer_mutator.py` 157-169 (`inversion`) and 194-206 (`scramble`) pick two cut points the same way (`rng.choice(np.arange(n + 1), size=2, replace=False)`, sorted). `FloatMutator.inversion` (float_mutator.py 262-272) does the same; jscpd misses it because the call is wrapped differently. Meant to change together.
+- F3 reach past an entry point: the package-wide random generators `rng` and `py_rng` (and `seed`, `SEED`) live in `generators/_shared.py`, so `archive.py`, `population.py` and `crossover.py` import a private module of another package. The generators are not a generators concern: `seed()` restarts every random draw seachange makes.
+- F4 dead text: `optimizers/revde.py`'s module docstring has empty `Notes` (`*`) and `Todo` (`[ ]`) sections copied from ARIEL. The `Todo` section is the only reason `docs/conf.py` loads `sphinx.ext.todo`, an approved difference from the template.
+- F5 dead code with a side effect: `IntegerMutator.scramble` calls `rng.shuffle(np.array(segment))`, which shuffles a throwaway copy, then shuffles again with `rng.permutation`. The first shuffle does nothing to the result but consumes random draws, so removing it changes every seeded result after a scramble. Behaviour change: Open questions.
+- F6 large files: `archive.py` (590), `ea.py` (498), `population.py` (403) are each one class; `codecs.py` (460) holds the codecs, their registry and the SQLAlchemy column type; `generators/sampling.py` (416) holds `IntegersGenerator` and `FloatsGenerator`. Much of each is numpy docstrings and typing overloads.
+- F7 wide imports: `archive.py` and `ea.py` import 6 seachange modules each; every one is a real collaborator (`codecs`, `ea_settings`, `individual`, `population`, and `model` or `ea_database`, `ea_operation`, plus the random generators).
+- No commented-out code, stale flags or unused exports (vulture, 2026-10-21, found only signature-forced parameters). No boundary to another language or process except the SQLite database (CODEMAP.md).
+
+Tasks, ranked by benefit over risk. Each keeps every test unchanged; R1 and R2 are also checked with a scratch script that records 1,000 seeded outputs of every generator, mutator and crossover operator and of `Population.sample`/`shuffle` before the change and compares them after (identical draws).
+
+- R1 One helper per clone (F1, F2). `generators/_shared.py` gets `swap_genes(individual, mutation_probability)` (generic over the element type) and `cut_points(n)`; both `swap` methods and the three cut-point users call them, with the random calls in the same order. Files: `_shared.py`, `float_mutator.py`, `integer_mutator.py`. Why: a change to swapping or cutting happens once. Expected: jscpd 2 clones to 0, 0.58% to 0%. Risk low. Status: proposed.
+- R2 Move the package's random generators to `src/seachange/_rng.py` (F3): `rng`, `py_rng`, `seed`, `SEED`. `generators/_shared.py` keeps its settings, types and `UNIFORM_MEDIAN`; `generators/__init__.py` and `seachange/__init__.py` still export `seed` and `SEED` (the public interface does not change). Files: new `_rng.py`, `_shared.py`, `sampling.py`, both mutators, `crossover.py`, `population.py`, `archive.py`, the two `__init__.py`, CLAUDE.md's code rule, CODEMAP.md. Why: no module imports another package's private module; `generators` and `optimizers` then import nothing from the rest of the package except `_rng`. Expected: reaches past an entry point 3 to 0. Risk low (`tests/test_generators.py` imports `settings` from `_shared`, which stays). Status: proposed.
+- R3 Remove the empty `Notes` and `Todo` sections from `optimizers/revde.py` (F4), drop `sphinx.ext.todo` from `docs/conf.py` so it matches the template again, and remove that approved difference from CLAUDE.md. Why: one less exception to remember. Verify: the `-W` docs build passes. Risk low; it removes an exception you approved, so it needs your yes. Status: proposed.
+- R4 When done: a README in `src/seachange/`, `generators/` and `optimizers/` (what it does, what it assumes, what it must never import), CODEMAP.md regenerated, the entry-point rule in CLAUDE.md, the numbers rerun. Status: proposed.
+
+Proposed skips, each recorded in DESIGN.md Rejected approaches once you confirm:
+
+- S1 Split `generators/sampling.py` into an integer and a float module, as the mutators are. It would bring one file under 400 lines, but `seachange.generators.sampling` is an import path that ARIEL's copy shares (`ariel.ec.generators.sampling`), so moving it is an interface change.
+- S2 Move `GenotypeColumn` (and `decode_error`, `UndecodableGenotype`) out of `codecs.py`. `tests/test_codecs.py` and `tests/test_individual.py` import them from `seachange.codecs`, so the tests would have to change.
+- S3 Split `archive.py`, `ea.py` or `population.py`: each is one class, and spreading a class over files makes it harder, not easier, to hold.
+- S4 Cut the imports of `archive.py` and `ea.py` below 6: each is a real collaborator, and hiding one behind another module only adds a layer. `seachange/__init__.py` imports 9 because it is the entry point.
+
+What the measures would show after R1 to R3: clones 2 to 0 (0.58% to 0%), reaches past an entry point 3 to 0, files over 400 lines unchanged at 6, modules importing more than 5 unchanged at 3 (S1 to S4 explain why).
+
 ### Tier 3: listed, not planned
 
 - Typing a `Sequence[int]` size (a numpy shape, which gives nested lists) correctly. No caller in this repo uses it, and goal 2 does not need it.
@@ -68,6 +106,7 @@ Goal 8's three questions were answered on 2026-10-21 (DESIGN.md Specs, goal 8). 
 
 - Audit D1/E3: `.github/workflows/ci.yml` runs its four gates as `uv run ruff ...`, `uv run mypy .`, `uv run pytest` without `--locked` (Python compliance check 15). `uv sync --locked` runs first, so a stale lock still fails. The file is identical to `~/Functions/_rsync/python/.github/workflows/ci.yml`, so the fix belongs there (edited on the Mac, whose `~/Functions` the Lenovo pulls), then `rsync-sync pull python` here. Waiting on the user.
 - Audit E5: there is no `.github/dependabot.yml`, though the comments in `ci.yml` and `docs.yml` say "let Dependabot bump them". Should the template gain one covering `github-actions` and `uv`? Waiting on the user.
+- Goal 10 finding F5 (2026-10-22): `IntegerMutator.scramble` (`generators/integer_mutator.py`) calls `rng.shuffle(np.array(segment))` on a throwaway copy before the real shuffle. The call changes nothing in the child but consumes random draws, so deleting it changes every seeded result that follows a scramble (behaviour change). Delete it, or keep it so seeded runs match ARIEL's copy? Waiting on the user.
 
 ## Known problems
 

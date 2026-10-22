@@ -1,17 +1,8 @@
 """Reversible Differential Evolution (RevDE) optimizer.
 
-Notes
------
-    *
-
 References
 ----------
     [1] https://dl.acm.org/doi/abs/10.1145/3377929.3389972
-
-Todo
-----
-    [ ]
-
 """
 
 # Third-party libraries

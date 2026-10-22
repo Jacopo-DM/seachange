@@ -20,7 +20,7 @@ Approved by the user on 2026-10-21. Goal numbers refer to PLAN.md. Goal 6 (api-c
 
 ### Goal 3: docs-build
 
-- `docs/conf.py` loads `sphinx.ext.todo`, so the `Todo` section of a numpy docstring renders.
+- `docs/conf.py` loads `sphinx.ext.todo`, so the `Todo` section of a numpy docstring renders. Reversed 2026-10-22 (goal 10, R3): the empty section is gone and so is the extension.
 - Acceptance: `sphinx-build -W --keep-going -b html docs docs/_build/html` exits 0.
 
 ### Goal 4: examples-tested
@@ -74,7 +74,7 @@ Why: a numpy array genotype cannot be stored today (assigning one crashes in the
 - 2026-10-21: a restart continues from the individuals still alive at the end of the chosen generation, not everyone who lived through part of it (user). Keeping ARIEL's query was rejected: on one-max it restarted with 30 instead of the 20 the run had.
 - 2026-10-21: the public repository is `https://github.com/Jacopo-DM/seachange` (user). The CI and docs workflows already target GitHub Actions; the repo can move to an org later.
 - 2026-10-21: `LICENSE` carries two copyright lines: 2025 for the ARIEL code (Jacopo Michele di Matteo and Ioannis Grigoriadis) and 2026 for the seachange changes (Jacopo Michele di Matteo). Chosen by the user.
-- 2026-10-21: the docs build fixes the `Todo` directive by loading `sphinx.ext.todo`, not by deleting the empty template sections (user).
+- 2026-10-21: the docs build fixes the `Todo` directive by loading `sphinx.ext.todo`, not by deleting the empty template sections (user). Reversed 2026-10-22 (user, goal 10 R3, asked again with this decision quoted): the empty `Notes` and `Todo` sections are deleted from `revde.py` and `docs/conf.py` matches the template, one approved difference fewer.
 - 2026-10-21: `Archive.fitness_stats` returns a frozen `FitnessStats` and `generation_range` a frozen `GenerationRange`, both on one shared base class `seachange.model.Model` (`frozen=True`, `extra="forbid"`), as the Python standard asks for records (user, compliance check 9). Reason: `stats.mean` gets editor completion and mypy catches `stats.maen`; `stats["maen"]` only fails when it runs. Done before 0.1, so no outside caller breaks.
 - 2026-10-21: rows read from a database file are validated as they load, in `EA.restart` and every `Archive` query, through `individual.check_rows` (user, compliance check 10). Reason: a SQLModel `table=True` model does not validate what it loads, so a file edited by another tool loaded a text `fitness_` such as `'high'` and failed later, far from the cause. A run's own per-generation fetch (`EA._fetch`) is not checked: it reads only what the run just wrote, and checking it would cost time every generation.
 - 2026-10-21: the settings (`seachange.config` and the generator `settings`) are read-only (`frozen=True`), as the Python standard asks (user, compliance check 9). Reason: `config.direction = "min"` in one notebook cell changed every `EA` created afterwards, and nothing in the `EA(...)` line showed it; an ARIEL example comment shows it surprising someone. A run takes its values as `EA` arguments or from `SEACHANGE_` environment variables. Keeping them changeable as an approved exception was rejected for that reason; the cost is one line in ARIEL's Ackley notebook (`config.is_maximisation = False` becomes `direction="min"` on `EA`).
@@ -90,10 +90,10 @@ Why: a numpy array genotype cannot be stored today (assigning one crashes in the
 - Making ARIEL depend on seachange at the time of the copy (one copy of the engine). Rejected by the user then, in favour of leaving ARIEL untouched; on 2026-10-21 the user planned it for after 0.1 (see Decisions).
 - Restart onto its own source file: writing the new run under a derived name such as `database_restart.db`. Rejected: the user may not notice where the data went. Checking inside `setup_database` was also rejected, because it does not know about restarts.
 - `size=None`: returning a one-item list (rejected by the user; it breaks numpy's convention), or annotating the return as a plain union (every caller would have to narrow, even with the default `size=1`).
-- Docs build: deleting the empty `Notes` and `Todo` sections from `revde.py`'s docstring. The user chose to enable `sphinx.ext.todo` instead.
+- Docs build: deleting the empty `Notes` and `Todo` sections from `revde.py`'s docstring. The user chose to enable `sphinx.ext.todo` instead. No longer rejected: done 2026-10-22 (goal 10, R3).
 - `operations` required (C12): keeping the `None` default (the mistake already fails at once) or dropping both defaults (restarts would still read `EA(None, ops, restart=...)`). Both rejected in favour of `EA.restart()`.
 - Licence: relicensing under MIT or similar. It needs written consent from every copyright holder of ARIEL's code.
-- Moving this repo's two template differences (`pytest.ini`'s leak filter, `docs/conf.py`'s `sphinx.ext.todo`) into the shared templates in `~/Functions/_rsync/`. The user kept them in this project only (recorded in CLAUDE.md); in the templates, the leak filter would fail other projects that leak resources.
+- Moving this repo's template differences (`pytest.ini`'s leak filter, and until 2026-10-22 `docs/conf.py`'s `sphinx.ext.todo`) into the shared templates in `~/Functions/_rsync/`. The user kept them in this project only (recorded in CLAUDE.md); in the templates, the leak filter would fail other projects that leak resources.
 - `Archive` draws: keeping SQLite's `ORDER BY random()` (it cannot be seeded, so `seed()` could not repeat a run), or loading every matching row and sampling in Python (loads whole archives). `_draw` reads only the ids in id order, samples them with `py_rng`, then loads the picked rows.
 
 - Genotype storage, measured 2026-10-21 (scratch scripts; plain `sqlite3`, 100 float32 genotypes of 10,000 weights, so without SQLAlchemy's own cost): JSON text writes in 0.33 s and reads in 0.19 s at 20.7 MB; raw bytes in the database 0.003 s and 0.002 s at 4.1 MB; one `.npy` file per genotype 0.006 s and 0.005 s at 4.0 MB. At 1,000,000 weights JSON took 37 s to write, raw bytes 0.25 s. Chosen for goal 8: raw bytes in the database.

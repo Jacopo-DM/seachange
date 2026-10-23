@@ -18,11 +18,11 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 | `_rng.py` | 35 | the two random generators every draw uses (numpy `rng`, Python `py_rng`) and `seed`, which restarts both | internal; `seed` and `SEED` are exported through `generators` and `seachange` |
 | `model.py` | 9 | the frozen base class for records | `Model` (internal) |
 | `crossover.py` | 395 | default crossover functions; arrays in give arrays out | `Crossover` |
-| `generators/` | 899 | random float and integer sequences and their mutations | `FloatsGenerator`, `IntegersGenerator`, `FloatMutator`, `IntegerMutator`, `Floats`, `Integers`, `SEED`, `seed` |
+| `generators/` | 896 | random float and integer sequences and their mutations | `FloatsGenerator`, `IntegersGenerator`, `FloatMutator`, `IntegerMutator`, `Floats`, `Integers`, `SEED`, `seed` |
 | `generators/_shared.py` | 106 | settings and types of the generators, and the steps several mutators share (`swap_genes`, `cut_points`) | internal |
 | `optimizers/revde.py` | 66 | Reversible Differential Evolution | `RevDE` |
 
-Lines as of 2026-10-22 (`wc -l`); `generators/` counts `__init__.py`, `sampling.py` and both mutators. `src/seachange/`, `generators/` and `optimizers/` each have a `README.md`: what the package does, what it assumes, and what it must never import (they ship in the wheel).
+Lines as of 2026-10-23 (`wc -l`); `generators/` counts `__init__.py`, `sampling.py` and both mutators. `src/seachange/`, `generators/` and `optimizers/` each have a `README.md`: what the package does, what it assumes, and what it must never import (they ship in the wheel).
 
 `G` is the genotype type, for type checkers only; it defaults to `Genotype`, and `Individual[X]` is `Individual` at run time.
 
@@ -44,4 +44,4 @@ Functional notebooks, one per feature area, committed with their outputs and run
 
 ## `docs/`, `tools/`, `.github/`, `.vscode/`
 
-`docs/` is the Sphinx site (`conf.py`, `index.md`, `genotypes.md` on how genotypes are stored and typed, `reference.md`). `tools/compress_images.py` and `tools/run_notebooks.py` are the shared templates the pre-commit hooks run; `run_notebooks.py` runs the functional notebooks (staged ones at commit, all at push), and its own test lives in the template repo (`~/Functions/_rsync/python-tests/`), not here. `tools/measure_structure.py` prints goal 10's structure numbers (files over 400 lines, wide imports, imports past an entry point, jscpd clones). `tools/bench_genotypes.py` is goal 8's benchmark: seconds of database work per generation and database size for 100 genotypes of 10,000 weights. `.github/workflows/ci.yml` runs format, lint, mypy and pytest; `docs.yml` builds the docs. `.vscode/` holds the editor settings and tasks (format, lint, mypy, ty, pytest, docs preview and build) copied from the template `~/Functions/_rsync/vscode/` by `pull-vscode`; identical to it.
+`docs/` is the Sphinx site (`conf.py`, `index.md`, `genotypes.md` on how genotypes are stored and typed, `reference.md`). `tools/compress_images.py` and `tools/run_notebooks.py` are the shared templates the pre-commit hooks run; `run_notebooks.py` runs the functional notebooks (staged ones at commit, all at push), and its own test lives in the template repo (`~/Functions/_rsync/python-tests/`), not here. `tools/measure_structure.py` prints goal 10's structure numbers (files over 400 lines, wide imports, imports past an entry point, jscpd clones). `tools/bench_genotypes.py` is goal 8's benchmark: seconds of database work per generation and database size for 100 genotypes of 10,000 weights. `.github/workflows/ci.yml` runs format, lint, mypy and pytest; `docs.yml` builds the docs. `.vscode/` holds the editor settings and tasks (format, lint, mypy, ty, pytest, docs preview and build) copied from the template `~/Functions/_rsync/vscode/` by `uv-cr-lib` (`rsync-sync pull vscode`); identical to it.

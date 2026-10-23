@@ -7,14 +7,14 @@ Entry point: `import seachange`. `examples/a1_one_max.py` is a complete run (the
 | Module | Lines | Purpose | Public interface |
 |---|---|---|---|
 | `__init__.py` | 60 | package exports | every name below except `Operation`, `setup_database` and `RevDE`, which are imported from their modules |
-| `ea.py` | 689 | the generational engine: runs the operations once per generation and commits to SQLite, dropping the genotypes `keep_genotypes` does not keep; restarts from a database, copying its history | `EA[G]` |
+| `ea.py` | 742 | the generational engine: runs the operations once per generation and commits to SQLite, dropping the genotypes `keep_genotypes` does not keep; restarts from a database, copying its history | `EA[G]` |
 | `ea_operation.py` | 259 | wraps a `Population -> Population` function as a pipeline step; `EA` calls each step's `run` | `Operation[G]`, `EAOperation[**P, G]` |
 | `ea_settings.py` | 99 | defaults for the engine, overridable from the environment | `EASettings`, `DBHandlingMode`, `Direction`, `KeepGenotypes`, `Rank`, `config` |
 | `ea_database.py` | 59 | creates the database file | `setup_database` |
-| `individual.py` | 292 | one row of the database: genotype, fitness, tags, birth and death; and `KeptGenotype`, the `kept_genotype` table naming each generation's ranked individuals | `Individual[G]`; `KeptGenotype` and `check_rows` (used by `ea` and `archive`, not exported) |
+| `individual.py` | 573 | one row of the database: fitness, tags, birth and death, with the genotype held in memory; `GenotypeRow`, the `genotype` table of stored genotypes; `KeptGenotype`, the `kept_genotype` table naming each generation's ranked individuals; `GenotypeSource`, where `Archive` reads a genotype from when it is first asked for; and the helpers that load, save and drop genotypes and tell the table layout from the old in-row one | `Individual[G]`; `GenotypeRow`, `KeptGenotype`, `GenotypeSource`, `check_rows`, `load_genotypes`, `save_genotypes`, `drop_genotypes`, `genotype_layout` (used by `ea` and `archive`, not exported) |
 | `population.py` | 403 | a list of individuals with selection helpers | `Population[G]` |
-| `archive.py` | 590 | read-only queries over a finished run's database | `Archive[G]`, `FitnessStats`, `GenerationRange` |
-| `codecs.py` | 460 | genotype types; turn a genotype into bytes and back; pick a codec for a genotype or by its stored name; the database column type that stores genotypes | `Genotype`, `JSONType`, `JSONPrimitive`, `JSONIterable`, `GenotypeCodec`, `JsonCodec`, `NumpyCodec`, `register_codec`; `codec_for`, `codec_named`, `Array`, `GenotypeColumn`, `UndecodableGenotype`, `decode_error` (not exported) |
+| `archive.py` | 606 | read-only queries over a finished run's database; the individuals it returns read their genotypes from the file when first asked for | `Archive[G]`, `FitnessStats`, `GenerationRange` |
+| `codecs.py` | 477 | genotype types; turn a genotype into bytes and back; pick a codec for a genotype or by its stored name; the database column type that stores genotypes | `Genotype`, `JSONType`, `JSONPrimitive`, `JSONIterable`, `GenotypeCodec`, `JsonCodec`, `NumpyCodec`, `register_codec`; `codec_for`, `codec_named`, `Array`, `GenotypeColumn`, `UndecodableGenotype`, `decode_error` (not exported) |
 | `_rng.py` | 35 | the two random generators every draw uses (numpy `rng`, Python `py_rng`) and `seed`, which restarts both | internal; `seed` and `SEED` are exported through `generators` and `seachange` |
 | `model.py` | 9 | the frozen base class for records | `Model` (internal) |
 | `crossover.py` | 395 | default crossover functions; arrays in give arrays out | `Crossover` |
@@ -32,7 +32,7 @@ seachange is pure Python with one boundary: the SQLite database, through SQLMode
 
 ## Import direction
 
-`ea` → `codecs`, `ea_database`, `ea_operation`, `ea_settings`, `individual`, `population`. `ea_database` → `ea_settings`. `ea_operation` → `codecs`, `population`. `individual` → `codecs`. `codecs` → `model`. `archive` → `_rng`, `codecs`, `ea_settings`, `individual`, `model`, `population`. `population` → `_rng`, `codecs`, `ea_settings`, `individual` (types only). `crossover` → `_rng`, `codecs` (the JSON types). `generators/*` → `_rng`, `generators._shared`. `optimizers` imports nothing from the package.
+`ea` → `codecs`, `ea_database`, `ea_operation`, `ea_settings`, `individual`, `population`. `ea_database` → `ea_settings`. `ea_operation` → `codecs`, `population`. `individual` → `codecs`, `model`. `codecs` → `model`. `archive` → `_rng`, `codecs`, `ea_settings`, `individual`, `model`, `population`. `population` → `_rng`, `codecs`, `ea_settings`, `individual` (types only). `crossover` → `_rng`, `codecs` (the JSON types). `generators/*` → `_rng`, `generators._shared`. `optimizers` imports nothing from the package.
 
 ## `tests/`
 

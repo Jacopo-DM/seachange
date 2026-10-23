@@ -12,7 +12,12 @@ from sqlmodel.sql.expression import SelectOfScalar
 from seachange._rng import py_rng
 from seachange.codecs import Genotype
 from seachange.ea_settings import Direction
-from seachange.individual import Individual, check_rows
+from seachange.individual import (
+    GenotypeSource,
+    Individual,
+    check_rows,
+    genotype_layout,
+)
 from seachange.model import Model
 from seachange.population import Population
 
@@ -92,6 +97,8 @@ class Archive[G = Genotype]:
             msg = f"Archive database not found: {self.db_path}"
             raise FileNotFoundError(msg)
         self.engine: Engine = create_engine(f"sqlite:///{self.db_path}")
+        with self.engine.connect() as connection:
+            self._layout = genotype_layout(connection)
 
     # -- Internal helpers ------------------------------------------------------
 
@@ -154,8 +161,7 @@ class Archive[G = Genotype]:
     ) -> list[Individual[G]]:
         with Session(self.engine) as session:
             rows = check_rows(session.exec(statement).all())
-        for ind in rows:
-            ind.id = None
+        self._read_genotypes_later(rows)
         # The run stored these rows, so their genotypes are of G
         return cast("list[Individual[G]]", rows)
 
@@ -181,10 +187,20 @@ class Archive[G = Genotype]:
                 )
             }
         drawn = [by_id[row_id] for row_id in picked]
-        # As in _fetch_all: callers may add these to a new run as new rows
-        for ind in drawn:
-            ind.id = None
+        self._read_genotypes_later(drawn)
         return cast("list[Individual[G]]", drawn)
+
+    def _read_genotypes_later(self, rows: list[Individual]) -> None:
+        # Each genotype is read from the file when first asked for. The ids
+        # go, so callers may add these to a new run as new rows.
+        path = self.db_path.resolve()
+        for ind in rows:
+            ind.read_genotype_from(
+                GenotypeSource(
+                    path=path, row_id=cast("int", ind.id), layout=self._layout
+                )
+            )
+            ind.id = None
 
     # -- Single-individual queries ---------------------------------------------
 

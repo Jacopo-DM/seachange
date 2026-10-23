@@ -83,7 +83,8 @@ def frozenset_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """
     monkeypatch.setattr(codecs_module, "_registered", [])
     register_codec(FrozensetCodec())
-    individual = Individual(genotype_=frozenset({"a", "b"}))
+    individual = Individual()
+    individual.genotype_ = frozenset({"a", "b"})
     individual.requires_init = False
     individual.fitness = 1.0
     db = tmp_path / "run.db"
@@ -95,12 +96,13 @@ def frozenset_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_a_user_codec_must_be_registered_to_read(frozenset_run: Path) -> None:
-    """Without the codec, the row is named along with the missing codec."""
-    with (
-        Archive(frozenset_run) as archive,
-        pytest.raises(ValueError, match=r"row 1 .* no codec named 'frozenset'"),
+    """Without the codec, reading the genotype names it and its row."""
+    with Archive(frozenset_run) as archive:
+        stored = archive.random_individual()
+    with pytest.raises(
+        ValueError, match=r"row 1 .* no codec named 'frozenset'"
     ):
-        archive.random_individual()
+        _ = stored.genotype
 
 
 def test_a_registered_user_codec_reads_its_file(frozenset_run: Path) -> None:

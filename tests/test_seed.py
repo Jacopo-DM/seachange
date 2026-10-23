@@ -42,10 +42,7 @@ def sample_and_mutate(population: Population) -> Population:
 
 def _run(tmp_path: Path, name: str, value: int) -> list[list[float]]:
     seed(value)
-    pop = Population([
-        Individual(genotype_=[float(i)], fitness_=float(i), requires_eval=False)
-        for i in range(POPULATION_SIZE)
-    ])
+    pop = make_pop(POPULATION_SIZE)
     with EA(
         pop,
         [sample_and_mutate],

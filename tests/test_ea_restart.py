@@ -1,5 +1,7 @@
 """Test: restarting an EA and its edge cases."""
 
+import sqlite3
+from contextlib import closing
 from pathlib import Path
 from typing import Literal, cast
 
@@ -303,6 +305,14 @@ def _rows(path: Path) -> dict[int, Individual]:
     return {key: row for key, row in rows.items() if key is not None}
 
 
+def _genotype_bytes(path: Path) -> dict[int, bytes]:
+    # The genotype table as stored: id to codec name and bytes
+    with closing(sqlite3.connect(path)) as connection:
+        return dict(
+            connection.execute("SELECT individual_id, data FROM genotype")
+        )
+
+
 @EAOperation
 def add_unevaluated_child(population: Population) -> Population:
     # One new child per generation, left for a later evaluation
@@ -341,7 +351,10 @@ def test_restart_keeps_ids_and_caps_the_copied_lifetimes(
     for key, ind in copy.items():
         assert ind.time_of_birth == source[key].time_of_birth
         assert ind.time_of_death == min(source[key].time_of_death, restart_from)
-        assert ind.genotype == source[key].genotype
+    source_bytes = _genotype_bytes(tmp_path / "first.db")
+    assert _genotype_bytes(tmp_path / "second.db") == {
+        key: source_bytes[key] for key in born_by_then
+    }
     # The child born in generation 1 was never evaluated: copied, retired
     child = next(ind for ind in copy.values() if ind.requires_eval)
     assert not child.alive

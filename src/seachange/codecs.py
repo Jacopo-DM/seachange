@@ -452,9 +452,26 @@ class GenotypeColumn(TypeDecorator[object]):
             The genotype, or an ``UndecodableGenotype`` saying why there is
             none.
         """
-        if value is None:
-            return None
-        try:
-            return _decode_stored(value)
-        except (TypeError, ValueError) as error:
-            return UndecodableGenotype(error=str(error))
+        return read_stored(value)
+
+
+def read_stored(value: object | None) -> object | None:
+    """Return the genotype stored as ``value``, as ``GenotypeColumn`` does.
+
+    Parameters
+    ----------
+    value : object or None
+        The stored bytes, or text written before codecs.
+
+    Returns
+    -------
+    object or None
+        The genotype, ``None`` for ``None``, or an ``UndecodableGenotype``
+        saying why there is none.
+    """
+    if value is None:
+        return None
+    try:
+        return _decode_stored(value)
+    except (TypeError, ValueError) as error:
+        return UndecodableGenotype(error=str(error))

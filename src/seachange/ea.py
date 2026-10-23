@@ -13,7 +13,7 @@ from rich.progress import (
     TextColumn,
     TimeRemainingColumn,
 )
-from sqlalchemy import Engine, create_engine, func
+from sqlalchemy import Connection, Engine, create_engine, func
 from sqlmodel import Session, col, or_, select
 
 from seachange.codecs import Genotype
@@ -26,7 +26,15 @@ from seachange.ea_settings import (
     Rank,
     config,
 )
-from seachange.individual import Individual, KeptGenotype, check_rows
+from seachange.individual import (
+    Individual,
+    KeptGenotype,
+    check_rows,
+    drop_genotypes,
+    genotype_layout,
+    load_genotypes,
+    save_genotypes,
+)
 from seachange.population import Population
 
 RANKS: frozenset[str] = frozenset({"best", "median", "worst"})
@@ -291,6 +299,7 @@ class EA[G = Genotype]:
                         .where(Individual.requires_eval == False)  # ruff: ignore[true-false-comparison]
                     ).all()
                 )
+                load_genotypes(session, rows)
         finally:
             # Release the pooled connection; the engine is not used again
             source_engine.dispose()
@@ -309,8 +318,9 @@ class EA[G = Genotype]:
             )
             raise ValueError(msg)
 
-        population = Population([
-            Individual(
+        survivors = []
+        for ind in rows:
+            survivor = Individual(
                 id=ind.id,
                 alive=True,
                 time_of_birth=ind.time_of_birth,
@@ -318,11 +328,11 @@ class EA[G = Genotype]:
                 requires_eval=False,
                 fitness_=ind.fitness_,
                 requires_init=ind.requires_init,
-                genotype_=ind.genotype_,
                 tags_=dict(ind.tags_),
             )
-            for ind in rows
-        ])
+            survivor.genotype_ = ind.genotype_
+            survivors.append(survivor)
+        population = Population(survivors)
         ea = EA(
             # The rows hold what the recorded run stored, genotypes of H
             cast("Population[H]", population),
@@ -374,6 +384,7 @@ class EA[G = Genotype]:
                     "AND id NOT IN (SELECT id FROM main.individual)",
                     (generation, generation),
                 )
+                self._copy_genotypes(connection, generation)
                 has_kept = connection.exec_driver_sql(
                     "SELECT count(*) FROM source.sqlite_master "
                     "WHERE type = 'table' AND name = 'kept_genotype'"
@@ -389,6 +400,41 @@ class EA[G = Genotype]:
                 connection.commit()
             finally:
                 connection.exec_driver_sql("DETACH DATABASE source")
+
+    @staticmethod
+    def _copy_genotypes(connection: Connection, generation: int) -> None:
+        """Copy the attached ``source``'s genotypes born by ``generation``.
+
+        Those already stored (the survivors') are skipped. ``source`` may
+        keep them in a ``genotype`` table or, as earlier seachange and
+        ARIEL did, in the individual table's ``genotype_`` column; the
+        bytes or JSON text are copied as they are.
+
+        Parameters
+        ----------
+        connection : Connection
+            The new run's connection, with the old file attached as
+            ``source``.
+        generation : int
+            The generation the run restarted from.
+        """
+        if genotype_layout(connection, "source") == "table":
+            sql = (
+                "INSERT INTO genotype (individual_id, data) "
+                "SELECT g.individual_id, g.data FROM source.genotype g "
+                "JOIN source.individual i ON i.id = g.individual_id "
+                "WHERE i.time_of_birth <= ? "
+                "AND g.individual_id NOT IN "
+                "(SELECT individual_id FROM main.genotype)"
+            )
+        else:
+            sql = (
+                "INSERT INTO genotype (individual_id, data) "
+                "SELECT id, genotype_ FROM source.individual "
+                "WHERE time_of_birth <= ? AND genotype_ IS NOT NULL "
+                "AND id NOT IN (SELECT individual_id FROM main.genotype)"
+            )
+        connection.exec_driver_sql(sql, (generation,))
 
     # -- Database --------------------------------------------------------------
 
@@ -411,19 +457,27 @@ class EA[G = Genotype]:
         The individuals keep their values in memory after the commit, so
         ``self.population`` stays readable once the session closes.
         """
+        # A population may hold one individual twice
+        present = list({id(ind): ind for ind in self.population}.values())
         with Session(self.engine, expire_on_commit=False) as session:
-            for ind in self.population:
+            for ind in present:
                 if ind.time_of_birth == -1:
                     ind.time_of_birth = self.current_generation
                 ind.time_of_death = self.current_generation
                 session.add(ind)
+            # New individuals need their ids for their genotype rows
+            session.flush()
             if self.keep_genotypes != "all":
-                # New individuals need their ids before they can be named
-                session.flush()
-                self._keep_ranked(session, self.keep_genotypes)
+                self._keep_ranked(session, present, self.keep_genotypes)
+            save_genotypes(session, present)
             session.commit()
 
-    def _keep_ranked(self, session: Session, ranks: tuple[Rank, ...]) -> None:
+    def _keep_ranked(
+        self,
+        session: Session,
+        present: Sequence[Individual[G]],
+        ranks: tuple[Rank, ...],
+    ) -> None:
         """Record this generation's ``ranks``; drop the other dead genotypes.
 
         The evaluated individuals present in the generation (alive, or
@@ -437,11 +491,11 @@ class EA[G = Genotype]:
         session : Session
             The open session of the commit, flushed so every individual
             has its id.
+        present : Sequence[Individual]
+            The generation's individuals, each once.
         ranks : tuple of {"best", "median", "worst"}
             The ranks to keep.
         """
-        # A population may hold one individual twice
-        present = list({id(ind): ind for ind in self.population}.values())
         ranked = sorted(
             (ind for ind in present if not ind.requires_eval),
             key=lambda ind: ind.fitness,
@@ -474,9 +528,7 @@ class EA[G = Genotype]:
                 )
             )
         )
-        for ind in dying:
-            if ind.id not in kept:
-                ind.genotype_ = None
+        drop_genotypes(session, [ind for ind in dying if ind.id not in kept])
 
     # -- Query helpers ---------------------------------------------------------
 
@@ -524,6 +576,7 @@ class EA[G = Genotype]:
 
         with Session(self.engine) as session:
             rows = Population(list(session.exec(statement).all()))
+            load_genotypes(session, rows.to_list())
         # The run stored these rows, so their genotypes are of G
         return cast("Population[G]", rows)
 

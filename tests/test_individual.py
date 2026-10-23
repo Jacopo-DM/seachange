@@ -123,6 +123,7 @@ def test_an_empty_numpy_genotype_keeps_requires_init() -> None:
 
 def test_an_undecodable_genotype_raises_on_reading() -> None:
     """A stored genotype no codec can read fails where it is read."""
-    ind = Individual(genotype_=UndecodableGenotype(error="bad bytes"))
+    ind = Individual()
+    ind.genotype_ = UndecodableGenotype(error="bad bytes")
     with pytest.raises(ValueError, match="cannot be decoded: bad bytes"):
         _ = ind.genotype

@@ -70,7 +70,9 @@ Raw bytes are much faster than JSON for large arrays. With 100 individuals of 10
 | list of floats (JSON) | 0.506 s | 435 MB |
 | float32 array | 0.015 s | 86 MB |
 
-Databases written before codecs, by earlier seachange or by ARIEL's `ariel.ec`, hold JSON text; they open in `Archive` and `EA.restart` unchanged. A stored genotype no codec can read is reported with its row: `Database row 2 is not a valid Individual: its genotype cannot be decoded: ...`.
+The bytes live in the file's `genotype` table, one row per individual, apart from the `individual` table that holds fitness, birth, death and tags. A query over fitness or lifetimes therefore reads no genotype. The engine reads the living population's genotypes along with it at each step. `Archive` reads a genotype only when you first ask for it: `archive.by_generation(12)` returns its individuals at once, and each `individual.genotype` then reads that one genotype from the file. That works after the archive is closed, but not after the file is moved or deleted, so read the genotypes you need first. Over a 200-generation run with these genotypes, asking `Archive.by_generation` for every generation took 1.75 s, against 8.0 s when the genotypes were stored in the individual's row.
+
+Databases written before this table, by earlier seachange or by ARIEL's `ariel.ec`, keep each genotype in a `genotype_` column of the individual's row, those before codecs as JSON text; they open in `Archive` and `EA.restart` unchanged, and a restart copies their genotypes into the new file's table. A stored genotype no codec can read is reported with its row: `EA.restart` refuses it with `Database row 2 is not a valid Individual: its genotype cannot be decoded: ...`, and `Archive` raises `genotype of row 2 cannot be decoded: ...` when the genotype is read.
 
 ## Keeping fewer genotypes
 
@@ -84,16 +86,16 @@ The living population's genotypes always stay, because every step reads them. On
 
 A dropped genotype's individual keeps its row, so fitness, birth, death and tags still answer `Archive` queries over the whole run; reading the genotype raises `ValueError: genotype of row 57 was not kept`. Each generation's ranked individuals are listed in the file's `kept_genotype` table.
 
-Measured on 2026-10-23 with 100 individuals of 10,000 float32 weights, every parent replaced each generation, 20 generations:
+Measured on 2026-10-23 with 100 individuals of 10,000 float32 weights, every parent replaced each generation, 200 generations:
 
 | `keep_genotypes` | Database size | Time per generation |
 |---|---|---|
-| `"all"` | 86 MB | 41 ms |
-| `["best", "median", "worst"]` | 18 MB | 65 ms |
-| `["best"]` | 17 MB | 65 ms |
-| `[]` | 16 MB | 66 ms |
+| `"all"` | 825 MB | 42 ms |
+| `["best", "median", "worst"]` | 25 MB | 56 ms |
+| `["best"]` | 12 MB | 56 ms |
+| `[]` | 6 MB | 56 ms |
 
-Dropping costs about 25 ms a generation here, the time SQLite takes to free the pages. The file still grows, more slowly: SQLite keeps the first 4 KB of each genotype in the individual's own row page and the rest in overflow pages. A dropped genotype's overflow pages are reused by later genotypes, but its row page stays behind nearly empty, because new individuals are stored after the old ones. Each dropped individual so leaves about one 4 KB page, whatever the genotype's size: about 10% of what `"all"` stores for these 40 KB genotypes, 0.1% for genotypes of 1 million weights. Over 200 generations of this run, `[]` grew the file to 91 MB and `["best", "median", "worst"]` to 108 MB, against about 860 MB for `"all"` (ten times its 86 MB for 20 generations; not measured). SQLite's `VACUUM` command rewrites a file without the empty space: it brought those two files down to 5.9 MB and 24.8 MB, in 0.09 s and 0.24 s.
+Dropping costs about 14 ms a generation here, the time SQLite takes to delete 100 genotypes and free their pages. The freed pages are reused by the next generation's genotypes, so the file holds little more than the genotypes it keeps: 6 MB for `[]` is the living population's 4 MB plus the individuals' rows. When the genotypes were stored in the individual's row, each dropped one left its row's 4 KB page behind, and the same `[]` run reached 91 MB.
 
 A restart needs the genotypes of the generation it starts from. Only `"all"` keeps them for every generation; with any other setting, restart from the latest generation, whose survivors are alive and so still have theirs. `EA.restart` says so when they are missing. The restarted file keeps the genotypes, and the records of who was ranked, that its source kept.
 

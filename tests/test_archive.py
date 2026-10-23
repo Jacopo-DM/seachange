@@ -1,6 +1,7 @@
 """Test: Archive, read-only query interface for a persisted EA database."""
 
 import math
+import pickle  # ruff: ignore[suspicious-pickle-import]  # multiprocessing pickles individuals; the test checks that works
 from pathlib import Path
 from typing import cast
 
@@ -525,3 +526,20 @@ def test_unknown_direction_leaves_the_order_to_the_database(
     mode = cast("Direction", "unsorted")
     assert isinstance(archive.best_individual(direction=mode), Individual)
     assert len(archive.hall_of_fame(n=TOP_N, direction=mode)) == TOP_N
+
+
+def test_an_archived_genotype_is_read_after_close(archive_db: Path) -> None:
+    """Archive reads a genotype when asked for it, also once closed."""
+    with Archive(archive_db) as archive:
+        best = archive.best_individual(direction="max")
+    assert best.genotype_ is not None
+
+
+def test_an_archived_individual_reads_its_genotype_after_pickling(
+    archive_db: Path,
+) -> None:
+    """A pickled copy, as a worker process gets it, reads the genotype."""
+    with Archive(archive_db) as archive:
+        best = archive.best_individual(direction="max")
+    copy = pickle.loads(pickle.dumps(best))  # ruff: ignore[suspicious-pickle-usage]  # the test's own object
+    assert copy.genotype == best.genotype

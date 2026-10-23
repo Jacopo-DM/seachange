@@ -16,7 +16,7 @@ from seachange import (
     Population,
     Rank,
 )
-from seachange.individual import KeptGenotype
+from seachange.individual import GenotypeRow, KeptGenotype
 from tests.ea_helpers import make_pop, noop
 from tests.misuse import untyped
 
@@ -80,6 +80,15 @@ def _rows(path: Path) -> list[Individual]:
     return rows
 
 
+def _stored(path: Path) -> set[int]:
+    # Ids of the individuals whose genotype the file holds
+    engine = create_engine(f"sqlite:///{path}")
+    with Session(engine) as session:
+        ids = set(session.exec(select(GenotypeRow.individual_id)))
+    engine.dispose()
+    return ids
+
+
 def _kept_rows(path: Path) -> list[KeptGenotype]:
     engine = create_engine(f"sqlite:///{path}")
     with Session(engine) as session:
@@ -120,7 +129,7 @@ def test_a_run_keeps_the_living_and_the_ranked(
     _run(tmp_path / "run.db", ranks, direction)
     rows = _rows(tmp_path / "run.db")
     expected = _expected(rows, ranks, direction)
-    assert {row.id for row in rows if row.genotype_ is not None} == expected
+    assert _stored(tmp_path / "run.db") == expected
     assert len(_kept_rows(tmp_path / "run.db")) == len(ranks) * (
         GENERATIONS + 1
     )
@@ -130,7 +139,7 @@ def test_all_keeps_every_genotype(tmp_path: Path) -> None:
     """The default keeps every genotype and records no ranks."""
     _run(tmp_path / "run.db", None)
     rows = _rows(tmp_path / "run.db")
-    assert all(row.genotype_ is not None for row in rows)
+    assert _stored(tmp_path / "run.db") == {row.id for row in rows}
     assert _kept_rows(tmp_path / "run.db") == []
 
 
@@ -221,9 +230,9 @@ def test_restart_carries_the_kept_records(tmp_path: Path) -> None:
     ) as restarted:
         survivors = {ind.id for ind in restarted.population}
         restarted.run()
-    rows = {row.id: row for row in _rows(tmp_path / "restarted.db")}
+    stored = _stored(tmp_path / "restarted.db")
     # The new run ranks nothing, so only the copied records protect
     for key in survivors:
-        assert (rows[key].genotype_ is not None) == (key in ranked)
+        assert (key in stored) == (key in ranked)
     assert survivors & ranked
     assert survivors - ranked

@@ -57,7 +57,8 @@ def test_genotype_and_tags_survive_a_run(
             db, [noop], db_file_path=Path(folder) / "again.db", quiet=True
         ) as ea:
             restarted = ea.population[0]
-    assert stored.genotype == genotype
+        # An archived genotype is read from the file, so before it goes
+        assert stored.genotype == genotype
     assert stored.tags == tags
     assert restarted.genotype == genotype
     assert restarted.tags == tags

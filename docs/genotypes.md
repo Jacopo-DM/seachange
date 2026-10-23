@@ -72,6 +72,31 @@ Raw bytes are much faster than JSON for large arrays. With 100 individuals of 10
 
 Databases written before codecs, by earlier seachange or by ARIEL's `ariel.ec`, hold JSON text; they open in `Archive` and `EA.restart` unchanged. A stored genotype no codec can read is reported with its row: `Database row 2 is not a valid Individual: its genotype cannot be decoded: ...`.
 
+## Keeping fewer genotypes
+
+By default a run keeps every genotype it ever stored, so `Archive` can hand back any individual's genotype long after it died. With large genotypes that adds up: 100 new individuals of 1 million float32 weights a generation is 400 MB a generation, 400 GB over 1,000 generations. `keep_genotypes` on `EA` (or `EASettings.keep_genotypes`, or the `SEACHANGE_KEEP_GENOTYPES` environment variable) decides which genotypes outlive their individual:
+
+- `"all"`, the default, keeps every genotype.
+- Any of `"best"`, `"median"` and `"worst"`, as a list, keeps those individuals' genotypes for each generation: the evaluated individuals present in the generation (alive, or retired during it) are ranked by fitness, following the run's `direction`, as `EA.get_solution` ranks them.
+- `[]` keeps only the living population's genotypes.
+
+The living population's genotypes always stay, because every step reads them. One cycle with `keep_genotypes=["best"]`: in generation 7 the engine stores the population, notes which individual was the best of generation 7, and then drops the genotype of every individual that died in generation 7 and was never the best of any generation. An individual that was the best of generation 3 keeps its genotype when it dies in generation 7.
+
+A dropped genotype's individual keeps its row, so fitness, birth, death and tags still answer `Archive` queries over the whole run; reading the genotype raises `ValueError: genotype of row 57 was not kept`. Each generation's ranked individuals are listed in the file's `kept_genotype` table.
+
+Measured on 2026-10-23 with 100 individuals of 10,000 float32 weights, every parent replaced each generation, 20 generations:
+
+| `keep_genotypes` | Database size | Time per generation |
+|---|---|---|
+| `"all"` | 86 MB | 41 ms |
+| `["best", "median", "worst"]` | 18 MB | 65 ms |
+| `["best"]` | 17 MB | 65 ms |
+| `[]` | 16 MB | 66 ms |
+
+Dropping costs about 25 ms a generation here, the time SQLite takes to free the pages; the space it frees is reused by the next generation's genotypes, so the file stops growing. SQLite does not hand the space back to the disk unless the file is compacted with `VACUUM`.
+
+A restart needs the genotypes of the generation it starts from. Only `"all"` keeps them for every generation; with any other setting, restart from the latest generation, whose survivors are alive and so still have theirs. `EA.restart` says so when they are missing. The restarted file keeps the genotypes, and the records of who was ranked, that its source kept.
+
 ## Your own genotype type
 
 A codec is a class with a `name`, and `handles`, `encode` and `decode` methods (the `seachange.GenotypeCodec` protocol). Register it once with `register_codec`, in every program that writes or reads the run's files: a program that reads the file without it gets `no codec named 'torch'`.

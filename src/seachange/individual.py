@@ -155,9 +155,17 @@ class Individual[G = Genotype](SQLModel, table=True):
         ------
         ValueError
             If accessed before the genotype has been initialised
-            (i.e. ``genotype_`` is ``None``), or if the stored genotype
-            could not be decoded.
+            (i.e. ``genotype_`` is ``None``), if the run did not keep it
+            (``genotype_`` is ``None`` but ``requires_init`` is ``False``,
+            see ``keep_genotypes``), or if the stored genotype could not be
+            decoded.
         """
+        if self.genotype_ is None and not self.requires_init:
+            msg = (
+                f"genotype of row {self.id} was not kept: its run dropped "
+                "it when the individual died (keep_genotypes)"
+            )
+            raise ValueError(msg)
         if self.genotype_ is None:
             msg = f"genotype accessed before initialization: {self.id=}"
             raise ValueError(msg)
@@ -217,6 +225,35 @@ class Individual[G = Genotype](SQLModel, table=True):
             The new tags.
         """
         self.tags_ = dict(value)
+
+
+# Mutable on purpose: SQLAlchemy saves a table row by changing it
+class KeptGenotype(SQLModel, table=True):
+    """
+    A genotype a run keeps after its individual dies.
+
+    Written by ``EA`` for each generation when ``keep_genotypes`` names
+    ranks: one row per rank, naming the individual ranked so in that
+    generation. A dying individual keeps its genotype if any row names it.
+
+    Parameters
+    ----------
+    id : int or None, optional
+        Primary key assigned by the database. Default is ``None``.
+    generation : int
+        The generation in which the individual held the rank.
+    rank : str
+        ``"best"``, ``"median"`` or ``"worst"``.
+    individual_id : int
+        ``Individual.id`` of the individual.
+    """
+
+    __tablename__ = "kept_genotype"
+
+    id: int | None = Field(default=None, primary_key=True)
+    generation: int = Field(index=True)
+    rank: str
+    individual_id: int = Field(index=True)
 
 
 def check_rows(rows: Sequence[Individual]) -> list[Individual]:

@@ -19,9 +19,47 @@ from sqlmodel import Session, col, or_, select
 from seachange.codecs import Genotype
 from seachange.ea_database import setup_database
 from seachange.ea_operation import Operation
-from seachange.ea_settings import DBHandlingMode, Direction, config
-from seachange.individual import Individual, check_rows
+from seachange.ea_settings import (
+    DBHandlingMode,
+    Direction,
+    KeepGenotypes,
+    Rank,
+    config,
+)
+from seachange.individual import Individual, KeptGenotype, check_rows
 from seachange.population import Population
+
+RANKS: frozenset[str] = frozenset({"best", "median", "worst"})
+
+
+def _checked_keep(keep: Literal["all"] | Sequence[Rank]) -> KeepGenotypes:
+    """Return ``keep_genotypes`` as the run stores it, after checking it.
+
+    Parameters
+    ----------
+    keep : "all" or Sequence of Rank
+        The value passed to ``EA`` or read from ``config``.
+
+    Returns
+    -------
+    KeepGenotypes
+        ``"all"``, or the ranks as a tuple.
+
+    Raises
+    ------
+    ValueError
+        If ``keep`` is another string, or names another rank.
+    """
+    if isinstance(keep, str):
+        if keep == "all":
+            return "all"
+    elif set(keep) <= RANKS:
+        return tuple(keep)
+    msg = (
+        "keep_genotypes must be 'all' or a sequence of 'best', 'median' "
+        f"and 'worst', not {keep!r}"
+    )
+    raise ValueError(msg)
 
 
 class EA[G = Genotype]:
@@ -61,6 +99,17 @@ class EA[G = Genotype]:
     db_handling : DBHandlingMode or None, optional
         Behaviour when a database already exists at ``db_file_path``. Falls
         back to ``config.db_handling`` when ``None``. Default is ``None``.
+    keep_genotypes : "all" or Sequence of Rank, optional
+        Which genotypes the run keeps once their individual dies (see
+        ``EASettings.keep_genotypes``): ``["best"]`` keeps the living
+        population's and each generation's best. Falls back to
+        ``config.keep_genotypes`` when ``None``. Default is ``None``.
+
+    Raises
+    ------
+    ValueError
+        If ``keep_genotypes`` is neither ``"all"`` nor a sequence of
+        ``"best"``, ``"median"`` and ``"worst"``.
 
     Examples
     --------
@@ -95,6 +144,7 @@ class EA[G = Genotype]:
         quiet: bool | None = None,
         db_file_path: Path | None = None,
         db_handling: DBHandlingMode | None = None,
+        keep_genotypes: Literal["all"] | Sequence[Rank] | None = None,
     ) -> None:
         """Start a new run from ``population``."""
         self.operations: Sequence[Operation[G]] = operations
@@ -108,6 +158,11 @@ class EA[G = Genotype]:
         )
         self.num_steps: int = (
             num_steps if num_steps is not None else config.num_steps
+        )
+        self.keep_genotypes: KeepGenotypes = _checked_keep(
+            keep_genotypes
+            if keep_genotypes is not None
+            else config.keep_genotypes
         )
         self.console: Console = Console(
             quiet=quiet if quiet is not None else config.quiet,
@@ -135,6 +190,7 @@ class EA[G = Genotype]:
         quiet: bool | None = None,
         db_file_path: Path | None = None,
         db_handling: DBHandlingMode | None = None,
+        keep_genotypes: Literal["all"] | Sequence[Rank] | None = None,
     ) -> "EA[H]":
         """Continue a recorded run in a new database.
 
@@ -171,6 +227,9 @@ class EA[G = Genotype]:
             As for ``EA``. Must not be ``source``.
         db_handling : DBHandlingMode or None, optional
             As for ``EA``.
+        keep_genotypes : "all" or Sequence of Rank, optional
+            As for ``EA``. It applies to the new run; the copied history
+            keeps the genotypes ``source`` kept.
 
         Returns
         -------
@@ -183,7 +242,9 @@ class EA[G = Genotype]:
             If ``source`` does not exist.
         ValueError
             If ``source`` is the file the new run would write to, holds no
-            individuals, or has no evaluated individuals at ``generation``.
+            individuals, has no evaluated individuals at ``generation``, or
+            did not keep their genotypes (see ``keep_genotypes``; the
+            survivors of its latest generation always have theirs).
         """
         source_db = Path(source)
         target_db = db_file_path or config.db_file_path
@@ -240,6 +301,13 @@ class EA[G = Genotype]:
                 f"in {source_db}."
             )
             raise ValueError(msg)
+        if any(ind.genotype_ is None and not ind.requires_init for ind in rows):
+            msg = (
+                f"{source_db} did not keep the genotypes of generation "
+                f"{generation}'s survivors (keep_genotypes); restart from "
+                "its latest generation instead."
+            )
+            raise ValueError(msg)
 
         population = Population([
             Individual(
@@ -269,6 +337,7 @@ class EA[G = Genotype]:
             quiet=quiet,
             db_file_path=target_db,
             db_handling=db_handling,
+            keep_genotypes=keep_genotypes,
         )
         ea._copy_history(source_db, generation)
         return ea
@@ -278,7 +347,9 @@ class EA[G = Genotype]:
 
         The survivors are already stored. Everyone else born by
         ``generation`` is copied as stored, genotype bytes included, with
-        ``alive`` false and ``time_of_death`` capped at ``generation``.
+        ``alive`` false and ``time_of_death`` capped at ``generation``,
+        and so are the records of which genotypes ``source`` kept up to
+        ``generation``.
 
         Parameters
         ----------
@@ -303,6 +374,18 @@ class EA[G = Genotype]:
                     "AND id NOT IN (SELECT id FROM main.individual)",
                     (generation, generation),
                 )
+                has_kept = connection.exec_driver_sql(
+                    "SELECT count(*) FROM source.sqlite_master "
+                    "WHERE type = 'table' AND name = 'kept_genotype'"
+                ).scalar_one()
+                if has_kept:
+                    connection.exec_driver_sql(
+                        "INSERT INTO kept_genotype "
+                        "(generation, rank, individual_id) "
+                        "SELECT generation, rank, individual_id "
+                        "FROM source.kept_genotype WHERE generation <= ?",
+                        (generation,),
+                    )
                 connection.commit()
             finally:
                 connection.exec_driver_sql("DETACH DATABASE source")
@@ -320,6 +403,11 @@ class EA[G = Genotype]:
         - Updates ``time_of_death`` to ``current_generation``, reflecting the
             last generation in which the individual was present.
 
+        Unless ``keep_genotypes`` is ``"all"``, the same commit records this
+        generation's ranked individuals and drops the genotype of each
+        individual that died in it and was never ranked (see
+        ``_keep_ranked``).
+
         The individuals keep their values in memory after the commit, so
         ``self.population`` stays readable once the session closes.
         """
@@ -329,7 +417,66 @@ class EA[G = Genotype]:
                     ind.time_of_birth = self.current_generation
                 ind.time_of_death = self.current_generation
                 session.add(ind)
+            if self.keep_genotypes != "all":
+                # New individuals need their ids before they can be named
+                session.flush()
+                self._keep_ranked(session, self.keep_genotypes)
             session.commit()
+
+    def _keep_ranked(self, session: Session, ranks: tuple[Rank, ...]) -> None:
+        """Record this generation's ``ranks``; drop the other dead genotypes.
+
+        The evaluated individuals present in the generation (alive, or
+        retired during it) are ranked as ``get_solution`` ranks them. A
+        ``KeptGenotype`` row names each of ``ranks``. An individual that
+        died in this generation loses its genotype unless a row, from this
+        generation or an earlier one, names it.
+
+        Parameters
+        ----------
+        session : Session
+            The open session of the commit, flushed so every individual
+            has its id.
+        ranks : tuple of {"best", "median", "worst"}
+            The ranks to keep.
+        """
+        # A population may hold one individual twice
+        present = list({id(ind): ind for ind in self.population}.values())
+        ranked = sorted(
+            (ind for ind in present if not ind.requires_eval),
+            key=lambda ind: ind.fitness,
+            reverse=self.direction == "max",
+        )
+        if ranked:
+            position = {"best": 0, "median": len(ranked) // 2, "worst": -1}
+            for rank in ranks:
+                session.add(
+                    KeptGenotype(
+                        generation=self.current_generation,
+                        rank=rank,
+                        # The flush gave every individual its id
+                        individual_id=cast("int", ranked[position[rank]].id),
+                    )
+                )
+        dying = [
+            ind
+            for ind in present
+            if not ind.alive and ind.genotype_ is not None
+        ]
+        if not dying:
+            return
+        kept = set(
+            session.exec(
+                select(KeptGenotype.individual_id).where(
+                    col(KeptGenotype.individual_id).in_([
+                        ind.id for ind in dying
+                    ])
+                )
+            )
+        )
+        for ind in dying:
+            if ind.id not in kept:
+                ind.genotype_ = None
 
     # -- Query helpers ---------------------------------------------------------
 

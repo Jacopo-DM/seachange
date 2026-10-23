@@ -19,6 +19,7 @@ Databases that `ariel.ec` wrote open in seachange's `Archive` and `EA.restart` a
 - `seachange.Direction`, the type of the new `direction=` keyword: `Literal["max", "min"]`.
 - `seachange.FitnessStats` and `seachange.GenerationRange`, the records `Archive` returns (see Changed).
 - `examples/a2_revde.py`, the RevDE demo that used to be `revde.main()`.
+- `keep_genotypes=` on `EA` and `EA.restart` (and `EASettings.keep_genotypes`, `SEACHANGE_KEEP_GENOTYPES`): `"all"` (the default) keeps every genotype, as before; a list of `"best"`, `"median"` and `"worst"` keeps those individuals of each generation plus the living population, and `[]` the living population only. A dropped genotype's row stays, and reading the genotype raises `ValueError`. The types are `seachange.KeepGenotypes` and `seachange.Rank`; the ranked individuals are recorded in a new `kept_genotype` table. [docs/genotypes.md](docs/genotypes.md) has the details.
 
 ### Changed
 

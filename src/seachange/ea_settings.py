@@ -8,6 +8,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 type DBHandlingMode = Literal["delete", "halt"]
 type Direction = Literal["max", "min"]
+type Rank = Literal["best", "median", "worst"]
+type KeepGenotypes = Literal["all"] | tuple[Rank, ...]
 
 
 # -- Settings ------------------------------------------------------------------
@@ -52,6 +54,21 @@ class EASettings(BaseSettings):
             Raise ``FileExistsError`` without modifying anything.
 
         Default is ``"delete"``.
+    keep_genotypes : KeepGenotypes, optional
+        Which genotypes a run keeps once their individual dies. The living
+        population's genotypes always stay, as every step reads them.
+
+        ``"all"``
+            Keep every genotype.
+        A tuple of ``"best"``, ``"median"`` and ``"worst"``
+            Keep, for each generation, those individuals' genotypes, ranked
+            by fitness among the evaluated individuals present in it, as
+            ``EA.get_solution`` ranks them. ``()`` keeps only the living
+            population's.
+
+        In the environment, write a tuple as a JSON list:
+        ``SEACHANGE_KEEP_GENOTYPES='["best", "worst"]'``. Default is
+        ``"all"``.
     """
 
     model_config = SettingsConfigDict(env_prefix="SEACHANGE_", frozen=True)
@@ -63,6 +80,7 @@ class EASettings(BaseSettings):
     output_folder: Path = Path("__data__")
     db_file_name: str = "database.db"
     db_handling: DBHandlingMode = "delete"
+    keep_genotypes: KeepGenotypes = "all"
 
     @computed_field  # type: ignore[prop-decorator]  # mypy cannot type a decorated property; pydantic documents this ignore
     @property

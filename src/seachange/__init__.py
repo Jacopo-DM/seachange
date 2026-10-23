@@ -14,7 +14,14 @@ from seachange.codecs import (
 from seachange.crossover import Crossover
 from seachange.ea import EA
 from seachange.ea_operation import EAOperation
-from seachange.ea_settings import DBHandlingMode, Direction, EASettings, config
+from seachange.ea_settings import (
+    DBHandlingMode,
+    Direction,
+    EASettings,
+    KeepGenotypes,
+    Rank,
+    config,
+)
 from seachange.generators import (
     SEED,
     FloatMutator,
@@ -52,8 +59,10 @@ __all__: list[str] = [
     "JSONPrimitive",
     "JSONType",
     "JsonCodec",
+    "KeepGenotypes",
     "NumpyCodec",
     "Population",
+    "Rank",
     "config",
     "register_codec",
     "seed",

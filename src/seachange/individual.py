@@ -4,7 +4,7 @@ import sqlite3
 from collections.abc import Sequence, Sized
 from contextlib import closing
 from pathlib import Path
-from typing import Literal, Self, cast
+from typing import Literal, Self, cast, override
 
 import numpy as np
 from pydantic import PrivateAttr, ValidationError
@@ -21,6 +21,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import InstanceState, make_transient_to_detached
+from sqlalchemy.orm.attributes import set_attribute
 from sqlmodel import Field, SQLModel, col, select
 
 from seachange.codecs import (
@@ -206,6 +207,17 @@ class Individual[G = Genotype](SQLModel, table=True):
         """
         return cls
 
+    @override
+    def __setattr__(self, name: str, value: object) -> None:
+        # What SQLModel's __setattr__ does for a column, less its checks
+        # and pydantic's handler lookup: about a fifth of the time
+        # Individual() and the setters take (goal 13)
+        if name in _COLUMNS:
+            set_attribute(self, name, value)
+            self.__pydantic_fields_set__.add(name)
+        else:
+            super().__setattr__(name, value)
+
     # -- Genotype property -----------------------------------------------------
 
     @property
@@ -221,7 +233,7 @@ class Individual[G = Genotype](SQLModel, table=True):
             The genotype, ``None``, or an ``UndecodableGenotype``.
         """
         if self._genotype_source is not None and self._genotype is None:
-            self._genotype = self._genotype_source.read()
+            self._set_private(_genotype=self._genotype_source.read())
         return self._genotype
 
     @genotype_.setter
@@ -233,9 +245,9 @@ class Individual[G = Genotype](SQLModel, table=True):
         value : object
             The genotype, or ``None``.
         """
-        self._genotype = value
-        self._genotype_unsaved = True
-        self._genotype_source = None
+        self._set_private(
+            _genotype=value, _genotype_unsaved=True, _genotype_source=None
+        )
 
     @property
     def genotype(self) -> G:
@@ -305,9 +317,9 @@ class Individual[G = Genotype](SQLModel, table=True):
         source : GenotypeSource
             Where the genotype is stored.
         """
-        self._genotype = None
-        self._genotype_unsaved = False
-        self._genotype_source = source
+        self._set_private(
+            _genotype=None, _genotype_unsaved=False, _genotype_source=source
+        )
 
     def unsaved_genotype(self) -> object | None:
         """Return the genotype if a run's database does not hold it yet.
@@ -326,8 +338,7 @@ class Individual[G = Genotype](SQLModel, table=True):
 
     def genotype_saved(self) -> None:
         """Note that the run's database now holds the genotype."""
-        self._genotype_unsaved = False
-        self._genotype_source = None
+        self._set_private(_genotype_unsaved=False, _genotype_source=None)
 
     def drop_genotype(self) -> None:
         """Forget the genotype, as ``keep_genotypes`` drops it.
@@ -335,8 +346,15 @@ class Individual[G = Genotype](SQLModel, table=True):
         ``requires_init`` stays as it is, so reading the genotype says it
         was not kept.
         """
-        self._genotype = None
+        self._set_private(_genotype=None)
         self.genotype_saved()
+
+    def _set_private(self, **values: object) -> None:
+        # SQLModel's __setattr__ costs about 7 us a call, and private
+        # attributes need none of its work; its calls were a third of a
+        # small-genome step's profile (goal 13)
+        private = cast("dict[str, object]", self.__pydantic_private__)
+        private.update(values)
 
     # -- Tags property ---------------------------------------------------------
 
@@ -366,6 +384,10 @@ class Individual[G = Genotype](SQLModel, table=True):
             The new tags.
         """
         self.tags_ = dict(value)
+
+
+# Individual's columns: every pydantic field, as SQLModel maps each one
+_COLUMNS = frozenset(Individual.model_fields)
 
 
 @event.listens_for(Individual, "load")

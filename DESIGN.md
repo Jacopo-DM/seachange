@@ -158,6 +158,7 @@ Why: a numpy array genotype cannot be stored today (assigning one crashes in the
 | 2026-10-22 | R3 | 10 | RevDE's empty `Notes` and `Todo` sections deleted; `docs/conf.py` drops `sphinx.ext.todo` | `docs/conf.py` identical to the template; docs build with `-W` |
 | 2026-10-22 | R4 | 10 | `README.md` in `src/seachange/`, `generators/`, `optimizers/`; CODEMAP.md line counts | files over 400 lines 6 and modules importing more than 5: 3, both unchanged (skips S1 to S4) |
 | 2026-10-22 | F5 | 10 | `IntegerMutator.scramble` no longer shuffles a throwaway copy (behaviour change, CHANGELOG) | draws before a scramble identical; every numpy draw after one differs; children still permutations; `Population.sample`/`shuffle` unchanged |
+| 2026-10-23 | compliance check 9 | none | `generators/_shared.py` `cut_points` returns `slice(lo, hi)` instead of a `(lo, hi)` tuple; the annotation is quoted because `slice[int, int, None]` raises `TypeError` at runtime on Python 3.13 | 1,000 seeded calls each of `FloatMutator.inversion`, `IntegerMutator.inversion` and `IntegerMutator.scramble` identical before and after; 270 tests unchanged |
 
 ## Gotchas
 

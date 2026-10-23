@@ -22,9 +22,9 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 | Purpose | Command | Checked |
 |---|---|---|
 | Install everything | `uv sync --all-groups` | passes; `--locked --dry-run` reports no changes |
-| Format | `uv run --no-sync ruff format .` | 64 files unchanged, <1 s; covers the notebooks in `tests/functional/` and Python code blocks in Markdown (`docs/*.md`), as the Stop hook's `ruff format --check` does |
+| Format | `uv run --no-sync ruff format .` | 69 files unchanged (2026-10-23), <1 s; covers the notebooks in `tests/functional/` and Python code blocks in Markdown (`docs/*.md`), as the Stop hook's `ruff format --check` does |
 | Lint | `uv run --no-sync ruff check --no-fix .` | passes, <1 s; without `--no-fix` it rewrites files (`fix = true` in the template) |
-| Types (mypy) | `uv run --no-sync mypy .` | passes, 47 files, <1 s; does not read notebooks |
+| Types (mypy) | `uv run --no-sync mypy .` | passes, 49 files (2026-10-23), <1 s; does not read notebooks |
 | Types (ty, advisory) | `uv run --locked ty check` | 0 diagnostics; also checks the notebooks, so a type error in a notebook cell shows here |
 | Tests | `uv run --no-sync pytest -q` | 270 passed, 100% branch coverage, ~8 s; no warnings; `pytest.ini` turns a leaked SQLite connection into a failure |
 | Functional notebooks | `uv run --locked python tools/run_notebooks.py` | 6 PASS, ~13 s (2026-10-22); runs each `tests/functional/*.ipynb` in a fresh kernel in a temp folder, writes nothing back. `--save <notebook>` refreshes a notebook's committed outputs after a change; run it on every notebook the change affects. The pre-push hook runs all of them |

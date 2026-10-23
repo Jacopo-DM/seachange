@@ -89,7 +89,7 @@ ea = EA.restart(
 )
 ```
 
-Without `db_file_path`, the new run would write to the default `__data__/database.db`, the file you are restarting from, so `EA.restart` raises `ValueError` instead of overwriting it. Pass `generation=` to continue from an earlier generation.
+Without `db_file_path`, the new run would write to the default `__data__/database.db`, the file you are restarting from, so `EA.restart` raises `ValueError` instead of overwriting it. Pass `generation=` to continue from an earlier generation. The new file starts with the old run's history up to that generation, under the same ids and generation numbers, so it answers questions about the whole run on its own.
 
 ## Genotypes
 

@@ -4,13 +4,14 @@ from pathlib import Path
 from typing import Literal, cast
 
 import pytest
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
 from seachange import (
     EA,
     Archive,
     DBHandlingMode,
     EAOperation,
+    Individual,
     Population,
     config,
 )
@@ -246,4 +247,101 @@ def test_restart_numbers_generations_as_the_source(tmp_path: Path) -> None:
         assert ea.current_generation == 1 + 2
     with Archive(tmp_path / "second.db") as archive:
         assert archive.generation_range.last == 1 + 2
-        assert archive.by_generation(1).size == SURVIVORS_AFTER_FIRST
+
+
+# Eight individuals, two retired in each of generations 1 and 2
+SURVIVORS_AT_RESTART = 4
+
+
+def _contents(archive: Archive, generation: int) -> list[tuple[float, str]]:
+    # Fitness and genotype of everyone present, in a stable order
+    return sorted(
+        (ind.fitness, repr(ind.genotype))
+        for ind in archive.by_generation(generation)
+    )
+
+
+def test_restart_copies_the_history_before_the_generation(
+    tmp_path: Path,
+) -> None:
+    """The new file answers by_generation up to the restart as the source."""
+    restart_from = 2
+    first = EA(
+        make_pop(RETIRE_POP_SIZE + 2),
+        [retire_two],
+        db_file_path=tmp_path / "first.db",
+        num_steps=3,
+        quiet=True,
+    )
+    first.run()
+    first.close()
+    with EA.restart(
+        tmp_path / "first.db",
+        [noop],
+        generation=restart_from,
+        db_file_path=tmp_path / "second.db",
+        quiet=True,
+    ) as restarted:
+        # The copied history is retired: only the survivors carry on
+        assert restarted.size == SURVIVORS_AT_RESTART
+    with (
+        Archive(tmp_path / "first.db") as source,
+        Archive(tmp_path / "second.db") as copy,
+    ):
+        assert copy.generation_range.first == 0
+        for generation in range(restart_from + 1):
+            assert _contents(copy, generation) == _contents(source, generation)
+        # All eight were born in generation 0, so all are copied
+        assert copy.size == source.size
+
+
+def _rows(path: Path) -> dict[int, Individual]:
+    engine = create_engine(f"sqlite:///{path}")
+    with Session(engine) as session:
+        rows = {ind.id: ind for ind in session.exec(select(Individual))}
+    engine.dispose()
+    return {key: row for key, row in rows.items() if key is not None}
+
+
+@EAOperation
+def add_unevaluated_child(population: Population) -> Population:
+    # One new child per generation, left for a later evaluation
+    child = Individual()
+    child.genotype = [0.5]
+    population.append(child)
+    return population
+
+
+def test_restart_keeps_ids_and_caps_the_copied_lifetimes(
+    tmp_path: Path,
+) -> None:
+    """Copied rows keep their ids; nobody copied lives past the restart."""
+    restart_from = 1
+    with EA(
+        make_pop(RETIRE_POP_SIZE),
+        [retire_two, add_unevaluated_child],
+        db_file_path=tmp_path / "first.db",
+        num_steps=3,
+        quiet=True,
+    ) as first:
+        first.run()
+    EA.restart(
+        tmp_path / "first.db",
+        [noop],
+        generation=restart_from,
+        db_file_path=tmp_path / "second.db",
+        quiet=True,
+    ).close()
+    source = _rows(tmp_path / "first.db")
+    copy = _rows(tmp_path / "second.db")
+    born_by_then = {
+        key for key, ind in source.items() if ind.time_of_birth <= restart_from
+    }
+    assert set(copy) == born_by_then
+    for key, ind in copy.items():
+        assert ind.time_of_birth == source[key].time_of_birth
+        assert ind.time_of_death == min(source[key].time_of_death, restart_from)
+        assert ind.genotype == source[key].genotype
+    # The child born in generation 1 was never evaluated: copied, retired
+    child = next(ind for ind in copy.values() if ind.requires_eval)
+    assert not child.alive

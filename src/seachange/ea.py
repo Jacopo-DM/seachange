@@ -140,8 +140,12 @@ class EA[G = Genotype]:
 
         Reads the evaluated individuals that survived ``generation`` in
         ``source`` (born by then and not retired during or before it) and
-        starts a new run with them. The other keywords are
-        those of ``EA``.
+        starts a new run with them. The new file also gets the rest of
+        ``source``'s history up to ``generation``: every other individual
+        born by then, retired, with its genotype if ``source`` kept it.
+        Every individual keeps its id, so the new file answers questions
+        about generations up to ``generation`` as ``source`` does. The
+        other keywords are those of ``EA``.
 
         Parameters
         ----------
@@ -239,6 +243,7 @@ class EA[G = Genotype]:
 
         population = Population([
             Individual(
+                id=ind.id,
                 alive=True,
                 time_of_birth=ind.time_of_birth,
                 time_of_death=-1,
@@ -250,7 +255,7 @@ class EA[G = Genotype]:
             )
             for ind in rows
         ])
-        return EA(
+        ea = EA(
             # The rows hold what the recorded run stored, genotypes of H
             cast("Population[H]", population),
             operations,
@@ -265,6 +270,42 @@ class EA[G = Genotype]:
             db_file_path=target_db,
             db_handling=db_handling,
         )
+        ea._copy_history(source_db, generation)
+        return ea
+
+    def _copy_history(self, source: Path, generation: int) -> None:
+        """Copy ``source``'s other individuals born by ``generation``.
+
+        The survivors are already stored. Everyone else born by
+        ``generation`` is copied as stored, genotype bytes included, with
+        ``alive`` false and ``time_of_death`` capped at ``generation``.
+
+        Parameters
+        ----------
+        source : Path
+            Database of the recorded run. It is only read.
+        generation : int
+            The generation the run restarted from.
+        """
+        names = list(Individual.model_fields)
+        changed = {"alive": "0", "time_of_death": "min(time_of_death, ?)"}
+        columns = ", ".join(names)
+        copied = ", ".join(changed.get(name, name) for name in names)
+        with self.engine.connect() as connection:
+            connection.exec_driver_sql(
+                "ATTACH DATABASE ? AS source", (str(source),)
+            )
+            try:
+                connection.exec_driver_sql(
+                    f"INSERT INTO individual ({columns}) "  # ruff: ignore[hardcoded-sql-expression]  # only the model's column names are filled in
+                    f"SELECT {copied} FROM source.individual "
+                    "WHERE time_of_birth <= ? "
+                    "AND id NOT IN (SELECT id FROM main.individual)",
+                    (generation, generation),
+                )
+                connection.commit()
+            finally:
+                connection.exec_driver_sql("DETACH DATABASE source")
 
     # -- Database --------------------------------------------------------------
 

@@ -20,12 +20,13 @@ It shows a progress bar, then prints the best individual:
 best fitness 20.0 of 20: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ```
 
-The run is saved in `__data__/database.db` under the current folder. [Genotypes and how they are stored](genotypes.md) covers numpy genotypes, type checking and your own genotype types; the reference lists every class and function.
+The run is saved in `__data__/database.db` under the current folder. [Genotypes and how they are stored](genotypes.md) covers numpy genotypes, type checking and your own genotype types; [How far SQLite storage goes](limits.md) gives the measured limits on genotype size and parallel writes; the reference lists every class and function.
 
 ```{toctree}
 :maxdepth: 2
 :caption: Contents
 
 genotypes
+limits
 reference
 ```

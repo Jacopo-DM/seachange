@@ -80,6 +80,7 @@ Approved 2026-10-21. One task per commit.
 
 ## Open questions
 
+- Storage before 0.1.0 (discussed 2026-10-23, nothing decided; the user wanted the format settled before anyone has a 0.1 database): (a) restart numbering, Known problems: Claude recommends storing the copy as generation `generation` (option B), so a restarted file's numbers match the original's; (b) giving a restarted file the history before the restart as rows without genotypes (about 100 KB instead of 45 MB at the goal 8 sizes), which can wait for 0.2 since it renumbers nothing; (c) genotypes in a table of their own in the same SQLite file, loaded on first access, against HDF5 beside the database (Claude advises against HDF5: two files that can disagree, no journal, poor fit for variable-size robot genotypes); measure first; (d) WAL and `synchronous=NORMAL` for parallel designs. The measured limits that inform (c) and (d) are in DESIGN.md Results (storage limits) and `docs/limits.md`.
 
 Goal 8's three questions were answered on 2026-10-21 (DESIGN.md Specs, goal 8). From the audit, both about the user's templates, which this repo copies unchanged; neither blocks the release:
 

@@ -155,7 +155,10 @@ class EA[G = Genotype]:
         num_steps : int or None, optional
             As for ``EA``.
         first_generation_id : int or None, optional
-            As for ``EA``, but defaults to ``generation + 1``.
+            As for ``EA``, but defaults to ``generation``: the survivors are
+            stored as that generation, so a run restarted from generation 10
+            for 20 steps writes generations 11 to 30, numbered as in
+            ``source``.
         direction : {"max", "min"} or None, optional
             As for ``EA``.
         quiet : bool or None, optional
@@ -255,7 +258,7 @@ class EA[G = Genotype]:
             first_generation_id=(
                 first_generation_id
                 if first_generation_id is not None
-                else generation + 1
+                else generation
             ),
             direction=direction,
             quiet=quiet,

@@ -6,7 +6,14 @@ from typing import Literal, cast
 import pytest
 from sqlmodel import SQLModel, create_engine
 
-from seachange import EA, DBHandlingMode, EAOperation, Population, config
+from seachange import (
+    EA,
+    Archive,
+    DBHandlingMode,
+    EAOperation,
+    Population,
+    config,
+)
 from tests.ea_helpers import (
     FIRST_GENERATION_ID,
     make_ea,
@@ -59,7 +66,7 @@ def test_restart_from_a_chosen_generation(tmp_path: Path) -> None:
     """generation= restarts from that generation."""
     source = _finished_run(tmp_path / "first")
     ea = _restart(tmp_path / "second", source, generation=RESTART_GENERATION)
-    assert ea.current_generation == RESTART_GENERATION + 1
+    assert ea.current_generation == RESTART_GENERATION
 
 
 def test_restart_from_a_string_path(tmp_path: Path) -> None:
@@ -215,3 +222,28 @@ def test_restart_takes_only_the_survivors_of_the_generation(
         quiet=True,
     )
     assert ea.size == survivors
+
+
+def test_restart_numbers_generations_as_the_source(tmp_path: Path) -> None:
+    """A restart from g for n steps stores g's survivors as g, ends at g + n."""
+    first = EA(
+        make_pop(RETIRE_POP_SIZE),
+        [retire_two],
+        db_file_path=tmp_path / "first.db",
+        num_steps=2,
+        quiet=True,
+    )
+    first.run()
+    with EA.restart(
+        tmp_path / "first.db",
+        [noop],
+        generation=1,
+        num_steps=2,
+        db_file_path=tmp_path / "second.db",
+        quiet=True,
+    ) as ea:
+        ea.run()
+        assert ea.current_generation == 1 + 2
+    with Archive(tmp_path / "second.db") as archive:
+        assert archive.generation_range.last == 1 + 2
+        assert archive.by_generation(1).size == SURVIVORS_AFTER_FIRST

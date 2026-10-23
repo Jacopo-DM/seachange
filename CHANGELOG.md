@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-10-23)
 
 The first release. seachange starts as a copy of ARIEL's `ariel.ec` engine, taken on 2026-10-21; this entry lists every difference from that copy, so ARIEL code can move over. ARIEL has since ported three of the fixes below into its own copy (the restart guard, the restart engine disposal and `size=None`).
 

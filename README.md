@@ -6,11 +6,10 @@ It started as the evolution engine of [ARIEL](https://github.com/ci-group/ariel)
 
 ## Installation
 
-seachange needs Python 3.13 or later. It is not on PyPI yet, so install it from a local clone:
+seachange needs Python 3.13 or later. Add it to your project with uv:
 
 ```bash
-git clone https://github.com/Jacopo-DM/seachange seachange
-uv add ./seachange
+uv add seachange
 ```
 
 ## Example
@@ -101,4 +100,4 @@ GPL-3.0-or-later, the same as ARIEL, which seachange's code comes from. See [LIC
 
 ## Documentation
 
-Every public class and function has a NumPy-style docstring. The Sphinx sources are in [docs/](docs/).
+The documentation is at https://jacopo-dm.github.io/seachange/: a guide to how genotypes are stored and typed, and a reference for every public class and function. The Sphinx sources are in [docs/](docs/).

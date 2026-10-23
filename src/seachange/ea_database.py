@@ -1,5 +1,8 @@
 """Creation of the EA database file."""
 
+import os
+import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from rich.console import Console
@@ -79,3 +82,37 @@ def _write_ahead(
     cursor.execute("PRAGMA journal_mode=WAL")
     cursor.execute("PRAGMA synchronous=NORMAL")
     cursor.close()
+
+
+def leave_write_ahead(engine: Engine) -> None:
+    """Switch the database of ``engine`` back from WAL to a rollback journal.
+
+    A WAL file can be read only where SQLite may create its ``-shm`` file,
+    so a closed run would not open in a read-only folder. Call it after
+    ``engine.dispose()``. While another connection (an open ``Archive``,
+    say) is reading the file, or the file or its folder is read-only, it
+    stays in WAL mode: ``close`` must not fail or wait because someone
+    reads the run. Does nothing when the file is gone.
+
+    Parameters
+    ----------
+    engine : Engine
+        The engine ``setup_database`` returned.
+
+    Raises
+    ------
+    sqlite3.OperationalError
+        If SQLite fails for another reason, such as a disk error.
+    """
+    path = Path(str(engine.url.database))
+    # Switching writes the file, and creates and removes files beside it
+    writable = os.access(path, os.W_OK) and os.access(path.parent, os.W_OK)
+    if not path.exists() or not writable:
+        return
+    with closing(sqlite3.connect(path, timeout=0)) as connection:
+        try:
+            connection.execute("PRAGMA journal_mode=DELETE")
+        except sqlite3.OperationalError as error:
+            # A reader holds the file
+            if "locked" not in str(error):
+                raise

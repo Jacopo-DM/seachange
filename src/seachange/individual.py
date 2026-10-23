@@ -20,8 +20,14 @@ from sqlalchemy import (
     update,
 )
 from sqlalchemy.dialects.sqlite import insert
-from sqlalchemy.orm import InstanceState, make_transient_to_detached
+from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.orm import (
+    InstanceState,
+    make_transient,
+    make_transient_to_detached,
+)
 from sqlalchemy.orm.attributes import set_attribute
+from sqlalchemy.orm.exc import StaleDataError
 from sqlmodel import Field, SQLModel, col, select
 
 from seachange.codecs import (
@@ -528,21 +534,37 @@ def _state(ind: object) -> InstanceState[object]:
     return cast("InstanceState[object]", inspect(ind))
 
 
+def is_new(ind: object) -> bool:
+    """Return whether SQLAlchemy has never seen ``ind`` stored.
+
+    Parameters
+    ----------
+    ind : object
+        An individual.
+
+    Returns
+    -------
+    bool
+        ``True`` for an individual ``save_individuals`` would insert.
+    """
+    return _state(ind).key is None
+
+
 def save_individuals[G](
     connection: Connection, individuals: Sequence[Individual[G]]
-) -> None:
+) -> list[Individual[G]]:
     """Write ``individuals``' rows in a few batched statements.
 
-    An individual not yet stored in this file (no id, or one read
-    elsewhere and never stored here) is inserted, keeping a given id. The
-    others get the ids SQLite would give them, one after the largest so
-    far, in order; seachange assigns them itself so that one
+    An individual SQLAlchemy has never seen stored is inserted, keeping a
+    given id. The others get the ids SQLite would give them, one after the
+    largest so far, in order; seachange assigns them itself so that one
     ``executemany`` can insert them all (a multi-row ``RETURNING`` has no
     guaranteed order in SQLite). The run's engine is the file's only
-    writer, so nothing takes an id in between. A stored
-    individual gets an ``UPDATE`` of the columns SQLAlchemy saw assigned
-    since it was read; a dict changed in place is not one of them, as with
-    the ORM. Genotypes are written separately (``save_genotypes``).
+    writer, so nothing takes an id in between. A stored individual gets an
+    ``UPDATE`` of the columns assigned a new value since it was read or
+    saved; a dict changed in place is not one of them, as with the ORM.
+    Genotypes are written separately (``save_genotypes``). Once the commit
+    succeeds, ``mark_saved`` must be called on the returned individuals.
 
     Parameters
     ----------
@@ -551,20 +573,34 @@ def save_individuals[G](
     individuals : Sequence[Individual]
         The individuals to save, each once.
 
+    Returns
+    -------
+    list[Individual]
+        The individuals this wrote, for ``mark_saved``.
+
     Raises
     ------
-    ValueError
+    InvalidRequestError
+        If two stored individuals are the same row, as the ORM refused.
+    StaleDataError
         If a stored individual's row is not in this file, as when an
-        individual from another run's database is saved here.
+        individual from another run's database is saved here, or one from
+        ``Archive`` (it keeps the key of its own file's row).
     """
     table = SQLModel.metadata.tables["individual"]
     names = list(Individual.model_fields)
-    new = [
-        ind for ind in individuals if ind.id is None or _state(ind).key is None
-    ]
+    new = [ind for ind in individuals if is_new(ind)]
     # By identity: == on individuals compares their genotypes too
     inserting = {id(ind) for ind in new}
     stored = [ind for ind in individuals if id(ind) not in inserting]
+    keys = [_state(ind).key for ind in stored]
+    if len(set(keys)) < len(keys):
+        twice = next(key for key in keys if keys.count(key) > 1)
+        msg = (
+            "Can't save two individuals with key "
+            f"{twice}: they are the same row, held twice"
+        )
+        raise InvalidRequestError(msg)
     if new:
         largest = connection.scalar(select(func.max(table.c.id))) or 0
         for ind in new:
@@ -577,13 +613,15 @@ def save_individuals[G](
             insert(table),
             [{name: getattr(ind, name) for name in names} for ind in new],
         )
-        for ind in new:
-            # Now stored: a later save updates it, as the ORM would
-            make_transient_to_detached(ind)
     by_columns: dict[tuple[str, ...], list[Individual[G]]] = {}
     for ind in stored:
+        state = _state(ind)
         changed = tuple(
-            name for name in names if name not in _state(ind).unmodified
+            name
+            for name in names
+            if name not in state.unmodified
+            # Assigned its old value: the ORM wrote nothing
+            and state.attrs[name].history.has_changes()
         )
         if changed:
             by_columns.setdefault(changed, []).append(ind)
@@ -603,12 +641,31 @@ def save_individuals[G](
         )
         if result.rowcount != len(group):
             msg = (
-                f"{len(group) - result.rowcount} of the individuals saved "
-                "are not in this run's database; an individual read from "
-                "another file is saved as new only through Archive, which "
-                "clears its id"
+                "UPDATE statement on table 'individual' expected to update "
+                f"{len(group)} row(s); {result.rowcount} were matched."
             )
-            raise ValueError(msg)
+            raise StaleDataError(msg)
+    return new + [ind for group in by_columns.values() for ind in group]
+
+
+def mark_saved[G](individuals: Sequence[Individual[G]]) -> None:
+    """Note that ``individuals``' rows are now stored as they are.
+
+    Called after the commit of ``save_individuals``, so a failed commit
+    leaves them as they were: SQLAlchemy keeps seeing their changes, and a
+    later save writes each column again only once it is assigned again.
+
+    Parameters
+    ----------
+    individuals : Sequence[Individual]
+        What ``save_individuals`` returned.
+    """
+    for ind in individuals:
+        if not is_new(ind):
+            # make_transient_to_detached clears the changes it saw, but
+            # takes only an individual with no key
+            make_transient(ind)
+        make_transient_to_detached(ind)
 
 
 def save_genotypes[G](

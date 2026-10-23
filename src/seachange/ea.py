@@ -17,7 +17,7 @@ from sqlalchemy import Connection, Engine, create_engine, func, insert
 from sqlmodel import Session, col, or_, select
 
 from seachange.codecs import Genotype
-from seachange.ea_database import setup_database
+from seachange.ea_database import leave_write_ahead, setup_database
 from seachange.ea_operation import Operation
 from seachange.ea_settings import (
     DBHandlingMode,
@@ -32,7 +32,9 @@ from seachange.individual import (
     check_rows,
     drop_genotypes,
     genotype_layout,
+    is_new,
     load_genotypes,
+    mark_saved,
     save_genotypes,
     save_individuals,
 )
@@ -464,12 +466,20 @@ class EA[G = Genotype]:
             if ind.time_of_birth == -1:
                 ind.time_of_birth = self.current_generation
             ind.time_of_death = self.current_generation
-        with self.engine.begin() as connection:
-            # Gives new individuals their ids, for their genotype rows
-            save_individuals(connection, present)
-            if self.keep_genotypes != "all":
-                self._keep_ranked(connection, present, self.keep_genotypes)
-            save_genotypes(connection, present)
+        # The ids a failed commit gives back, as the ORM's rollback did
+        ids = [(ind, ind.id) for ind in present if is_new(ind)]
+        try:
+            with self.engine.begin() as connection:
+                # Gives new individuals their ids, for their genotype rows
+                saved = save_individuals(connection, present)
+                if self.keep_genotypes != "all":
+                    self._keep_ranked(connection, present, self.keep_genotypes)
+                save_genotypes(connection, present)
+        except BaseException:
+            for ind, old in ids:
+                ind.id = old
+            raise
+        mark_saved(saved)
 
     def _keep_ranked(
         self,
@@ -719,9 +729,11 @@ class EA[G = Genotype]:
         """Release the database connection.
 
         The run can still be read afterwards; the next query opens a new
-        connection, which ``close`` releases again.
+        connection, which ``close`` releases again. The closed file leaves
+        WAL mode, so it reads like any other, in a read-only folder too.
         """
         self.engine.dispose()
+        leave_write_ahead(self.engine)
 
     def __enter__(self) -> Self:
         """Return this run, to be closed when the ``with`` block ends.

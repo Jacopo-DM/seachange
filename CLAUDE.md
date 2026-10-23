@@ -22,11 +22,11 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 | Purpose | Command | Checked |
 |---|---|---|
 | Install everything | `uv sync --all-groups` | passes; `--locked --dry-run` reports no changes |
-| Format | `uv run --no-sync ruff format .` | 71 files unchanged (2026-10-23), <1 s; covers the notebooks in `tests/functional/` and Python code blocks in Markdown (`docs/*.md`), as the Stop hook's `ruff format --check` does |
+| Format | `uv run --no-sync ruff format .` | 73 files unchanged (2026-10-23), <1 s; covers the notebooks in `tests/functional/` and Python code blocks in Markdown (`docs/*.md`), as the Stop hook's `ruff format --check` does |
 | Lint | `uv run --no-sync ruff check --no-fix .` | passes, <1 s; without `--no-fix` it rewrites files (`fix = true` in the template) |
-| Types (mypy) | `uv run --no-sync mypy .` | passes, 50 files (2026-10-23), <1 s; does not read notebooks |
+| Types (mypy) | `uv run --no-sync mypy .` | passes, 52 files (2026-10-23), <1 s; does not read notebooks |
 | Types (ty, advisory) | `uv run --locked ty check` | 0 diagnostics; also checks the notebooks, so a type error in a notebook cell shows here |
-| Tests | `uv run --no-sync pytest -q` | 298 passed, 100% branch coverage, 8 to 15 s; no warnings; `pytest.ini` turns a leaked SQLite connection into a failure |
+| Tests | `uv run --no-sync pytest -q` | 304 passed, 100% branch coverage, 8 to 15 s (about twice that while another job loads the machine); no warnings; `pytest.ini` turns a leaked SQLite connection into a failure |
 | Functional notebooks | `uv run --locked python tools/run_notebooks.py` | 6 PASS, 13 to 35 s (2026-10-22 and 2026-10-23); runs each `tests/functional/*.ipynb` in a fresh kernel in a temp folder, writes nothing back. `--save <notebook>` refreshes a notebook's committed outputs after a change; run it on every notebook the change affects. The pre-push hook runs all of them |
 | Docs | `uv run --no-sync sphinx-build -W --keep-going -b html docs docs/_build/html` | passes, ~2 s; same command as `docs.yml` |
 | Docs, shortcut | `uv-docs build` | passes, ~2 s; the shell function in `~/Functions/functions/my-funcs` that runs the build above with `--locked --group docs` |
@@ -68,4 +68,5 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 
 ## Things that bite
 
+- Other projects on the Lenovo run heavy jobs that use every core (on 2026-10-23 an ARIEL run with 11 `multiprocessing` workers sent the load average to 15 and made seachange's step about twice as slow, with runs from 45 to 70 ms). Check `uptime` before any benchmark and wait until the load is below 2; do not stop another project's processes.
 - The Clean install command used to run the example from the repo root, so each check replaced `__data__/database.db` there (it did on 2026-10-23). Commands that run an example or an `EA` start in a temp folder, as the Clean install row now does.

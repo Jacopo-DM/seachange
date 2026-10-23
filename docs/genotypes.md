@@ -93,7 +93,7 @@ Measured on 2026-10-23 with 100 individuals of 10,000 float32 weights, every par
 | `["best"]` | 17 MB | 65 ms |
 | `[]` | 16 MB | 66 ms |
 
-Dropping costs about 25 ms a generation here, the time SQLite takes to free the pages; the space it frees is reused by the next generation's genotypes, so the file stops growing. SQLite does not hand the space back to the disk unless the file is compacted with `VACUUM`.
+Dropping costs about 25 ms a generation here, the time SQLite takes to free the pages. The file still grows, more slowly: SQLite keeps the first 4 KB of each genotype in the individual's own row page and the rest in overflow pages. A dropped genotype's overflow pages are reused by later genotypes, but its row page stays behind nearly empty, because new individuals are stored after the old ones. Each dropped individual so leaves about one 4 KB page, whatever the genotype's size: about 10% of what `"all"` stores for these 40 KB genotypes, 0.1% for genotypes of 1 million weights. Over 200 generations of this run, `[]` grew the file to 91 MB and `["best", "median", "worst"]` to 108 MB, against about 860 MB for `"all"` (ten times its 86 MB for 20 generations; not measured). SQLite's `VACUUM` command rewrites a file without the empty space: it brought those two files down to 5.9 MB and 24.8 MB, in 0.09 s and 0.24 s.
 
 A restart needs the genotypes of the generation it starts from. Only `"all"` keeps them for every generation; with any other setting, restart from the latest generation, whose survivors are alive and so still have theirs. `EA.restart` says so when they are missing. The restarted file keeps the genotypes, and the records of who was ranked, that its source kept.
 

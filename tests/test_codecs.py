@@ -136,6 +136,36 @@ def test_json_codec_decodes_a_genotype_or_refuses(data: bytes) -> None:
         assert isinstance(outcome, list | dict)
 
 
+@given(
+    text=st.recursive(
+        st.none() | st.booleans() | st.integers() | st.floats() | st.text(),
+        lambda children: (
+            st.lists(children) | st.dictionaries(st.text(), children)
+        ),
+    ).map(json.dumps)
+)
+@example(text='["\\ud800"]')
+@example(text='{"a": [1, null]}')
+@example(text="[" * 100_000)
+@example(text="[" * 201 + "]" * 201)
+@example(text="[" * 202 + "]" * 202)
+@example(text='["\\ud83d\\ude00", "null"]')
+def test_json_codec_decodes_any_json_as_pydantic_does(text: str) -> None:
+    """The json.loads fast path gives what validate_json gives, or its error."""
+    data = text.encode(errors="surrogatepass")
+    expected: object
+    try:
+        expected = codecs_module._JSON_GENOTYPE.validate_json(data)  # ruff: ignore[private-member-access]  # the validator the fast path must match
+    except ValueError:
+        expected = ValueError
+    outcome: object
+    try:
+        outcome = JsonCodec.decode(data)
+    except ValueError:
+        outcome = ValueError
+    assert repr(outcome) == repr(expected)
+
+
 # -- NumpyCodec ----------------------------------------------------------------
 
 

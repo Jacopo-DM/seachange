@@ -21,6 +21,7 @@ the codec by that name.
 
 import io
 import json
+import re
 from collections.abc import Hashable, Sequence
 from typing import Protocol, override
 
@@ -38,6 +39,11 @@ type JSONType = JSONPrimitive | Sequence[JSONType] | dict[Hashable, JSONType]
 type JSONIterable = Sequence[JSONType] | dict[Hashable, JSONType]
 
 _JSON_GENOTYPE: TypeAdapter[JSONIterable] = TypeAdapter(JSONIterable)
+# What JsonCodec.decode leaves to _JSON_GENOTYPE (see _plain_json): a
+# null, a surrogate escape, or enough brackets to nest past its limit of
+# 200 levels
+_NOT_PLAIN = re.compile(rb"null|\\u[dD][89a-fA-F]")
+_MAX_PLAIN_BRACKETS = 128
 
 # Any numpy array; numpy.generic takes its item type only in the stubs
 type Array = NDArray[np.generic[object]]
@@ -180,11 +186,43 @@ class JsonCodec:
         ValueError
             If ``data`` is not JSON text of a list or dict.
         """
+        if _plain_json(data):
+            try:
+                parsed = json.loads(data.decode())
+            except ValueError:
+                parsed = None
+            if isinstance(parsed, list | dict):
+                return parsed
         try:
             return _JSON_GENOTYPE.validate_json(data)
         except ValidationError as error:
             msg = f"not a JSON genotype: {error}"
             raise ValueError(msg) from error
+
+
+def _plain_json(data: bytes) -> bool:
+    r"""Return whether ``json.loads`` reads ``data`` as ``_JSON_GENOTYPE`` does.
+
+    ``json.loads`` is about six times faster than ``validate_json`` on a
+    small genome, a fifth of a generation's time (goal 13), but it also
+    takes ``null``, lone surrogates (``"\ud800"``) and nesting deeper
+    than 200 levels, which ``validate_json`` refuses. This scan rules all
+    three out, and some valid text with them (``"null"`` inside a string,
+    a surrogate pair, 128 brackets or more), which ``validate_json`` then
+    reads as before.
+
+    Parameters
+    ----------
+    data : bytes
+        Stored JSON text.
+
+    Returns
+    -------
+    bool
+        ``True`` when ``json.loads`` may decode ``data``.
+    """
+    brackets = data.count(b"[") + data.count(b"{")
+    return brackets < _MAX_PLAIN_BRACKETS and _NOT_PLAIN.search(data) is None
 
 
 # Behaviour, not a record: a codec holds no data

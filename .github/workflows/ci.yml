@@ -1,5 +1,6 @@
 # Pulled into every project by `rsync-sync pull python`. Action SHAs and the uv version
-# come from docs.astral.sh/uv/guides/integration/github (uv 0.13.1). Let Dependabot bump them.
+# come from docs.astral.sh/uv/guides/integration/github (uv 0.13.1). Dependabot bumps the
+# SHAs; when it bumps the uv-pre-commit rev, set the uv version here to the same number.
 name: CI
 
 on:
@@ -32,10 +33,10 @@ jobs:
       - name: Install the locked environment
         run: uv sync --locked
       - name: Format
-        run: uv run ruff format --check
+        run: uv run --locked ruff format --check
       - name: Lint (ruff.toml has fix = true, so read-only here)
-        run: uv run ruff check --no-fix
+        run: uv run --locked ruff check --no-fix
       - name: Types
-        run: uv run mypy .
+        run: uv run --locked mypy .
       - name: Tests and coverage
-        run: uv run pytest
+        run: uv run --locked pytest

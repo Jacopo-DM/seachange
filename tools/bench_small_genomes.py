@@ -7,11 +7,14 @@ weights, every child gets a random fitness, and the worst ``SIZE`` retire.
 Fitness is free, so nearly all the time is the engine's. Three variants do
 the same work and differ only in where the population lives:
 
-- native, in memory: Python lists, no database;
-- native and batched SQLite: the lists, plus one ``executemany`` of the new
-  rows and a commit per generation, in WAL mode with ``synchronous=NORMAL``,
-  the floor any SQLite-backed engine can reach;
-- seachange: ``EA.step()``.
+native, in memory
+    Python lists, no database.
+native and batched SQLite
+    The lists, plus one ``executemany`` of the new rows and a commit per
+    generation, in WAL mode with ``synchronous=NORMAL``: the floor any
+    SQLite-backed engine can reach.
+seachange
+    ``EA.step()``.
 
 Each variant runs ``REPEATS`` times, each run in a new temporary folder; the
 script prints the median of the runs' median milliseconds per generation,

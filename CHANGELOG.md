@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **A generation is saved in a few batched statements.** `EA` used to save each individual through the ORM, one statement per row; it now writes each generation with one insert of the new individuals, one update per set of changed columns and one write of the new genotypes. Ids come out as before: each new individual gets the next number, in population order. A dict changed in place (`ind.tags["k"] = 1`) is still not saved; assign it. Saving into one run's database an individual read straight from another run's file now raises `ValueError`; individuals from `Archive` are saved as new rows, as before.
+- **Databases are written ahead, without waiting for the disk.** A run's connections use `journal_mode=WAL` with `synchronous=NORMAL`. A power cut can lose the last commit or two, though the file stays intact; while the database is open, `-wal` and `-shm` files sit beside it, and `db_handling="delete"` removes them with the file. On a network filesystem, write the run to a local disk.
+
 ## 0.1.0 (2026-10-23)
 
 The first release. seachange starts as a copy of ARIEL's `ariel.ec` engine, taken on 2026-10-21; this entry lists every difference from that copy, so ARIEL code can move over. ARIEL has since ported three of the fixes below into its own copy (the restart guard, the restart engine disposal and `size=None`).

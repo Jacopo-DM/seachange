@@ -3,7 +3,8 @@
 from pathlib import Path
 
 from rich.console import Console
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, PoolProxiedConnection, create_engine, event
+from sqlalchemy.pool import ConnectionPoolEntry
 from sqlmodel import SQLModel
 
 from seachange.ea_settings import DBHandlingMode
@@ -20,13 +21,20 @@ def setup_database(
     database file is already present at ``db_file_path``, behaviour is
     controlled by ``db_handling``.
 
+    The engine's connections write in WAL mode with ``synchronous=NORMAL``
+    (DESIGN.md Decisions, goal 13): a commit does not wait for the disk, so
+    a power cut can lose the last commit or two, but never corrupts the
+    file. While the database is open, SQLite keeps ``-wal`` and ``-shm``
+    files beside it.
+
     Parameters
     ----------
     db_file_path : Path
         Destination path for the SQLite database file.
     db_handling : DBHandlingMode
-        ``"delete"`` removes any existing file before creating a fresh
-        database. ``"halt"`` raises ``FileExistsError`` immediately.
+        ``"delete"`` removes any existing file, with its ``-wal`` and
+        ``-shm`` files, before creating a fresh database. ``"halt"`` raises
+        ``FileExistsError`` immediately.
     console : Console
         Where the warning about an existing file is logged.
 
@@ -50,10 +58,24 @@ def setup_database(
             case "delete":
                 console.log(f"⚠️  {msg} → deleting", style="yellow")
                 db_file_path.unlink()
+                # An old journal must not meet the new file
+                for suffix in ("-wal", "-shm"):
+                    Path(f"{db_file_path}{suffix}").unlink(missing_ok=True)
             case "halt":
                 msg = f"⚠️  {msg} → halted"
                 raise FileExistsError(msg)
 
     engine = create_engine(f"sqlite:///{db_file_path}")
+    event.listen(engine, "connect", _write_ahead)
     SQLModel.metadata.create_all(engine)
     return engine
+
+
+def _write_ahead(
+    connection: PoolProxiedConnection, _record: ConnectionPoolEntry
+) -> None:
+    # Each new connection: write-ahead log, no disk sync at each commit
+    cursor = connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    cursor.close()

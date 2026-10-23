@@ -8,9 +8,20 @@ from typing import Literal, Self, cast
 
 import numpy as np
 from pydantic import PrivateAttr, ValidationError
-from sqlalchemy import JSON, Column, Connection, delete, event
+from sqlalchemy import (
+    JSON,
+    Column,
+    Connection,
+    bindparam,
+    delete,
+    event,
+    func,
+    inspect,
+    update,
+)
 from sqlalchemy.dialects.sqlite import insert
-from sqlmodel import Field, Session, SQLModel, col
+from sqlalchemy.orm import InstanceState, make_transient_to_detached
+from sqlmodel import Field, SQLModel, col, select
 
 from seachange.codecs import (
     Genotype,
@@ -445,16 +456,18 @@ def genotype_layout(
     return "table" if found.scalar_one() else "row"
 
 
-def load_genotypes[G](session: Session, rows: Sequence[Individual[G]]) -> None:
-    """Read the genotypes of ``rows`` from the database open in ``session``.
+def load_genotypes[G](
+    connection: Connection, rows: Sequence[Individual[G]]
+) -> None:
+    """Read the genotypes of ``rows`` from the database open on ``connection``.
 
     Each row's genotype is set as read, so saving the row again does not
     rewrite it. A row with no stored genotype reads as ``None``.
 
     Parameters
     ----------
-    session : Session
-        An open session on the database the rows came from.
+    connection : Connection
+        An open connection to the database the rows came from.
     rows : Sequence[Individual]
         Rows as loaded, with their ids.
 
@@ -465,14 +478,14 @@ def load_genotypes[G](session: Session, rows: Sequence[Individual[G]]) -> None:
     """
     sql = (
         "SELECT individual_id, data FROM genotype WHERE individual_id IN ({})"
-        if genotype_layout(session.connection()) == "table"
+        if genotype_layout(connection) == "table"
         else "SELECT id, genotype_ FROM individual WHERE id IN ({})"
     )
     ids = [row.id for row in rows]
     stored: dict[int, object] = {}
     for start in range(0, len(ids), _CHUNK):
         chunk = ids[start : start + _CHUNK]
-        found = session.connection().exec_driver_sql(
+        found = connection.exec_driver_sql(
             sql.format(", ".join("?" * len(chunk))), tuple(chunk)
         )
         stored.update(dict(found.all()))
@@ -488,16 +501,104 @@ def load_genotypes[G](session: Session, rows: Sequence[Individual[G]]) -> None:
         row.genotype_saved()
 
 
-def save_genotypes[G](
-    session: Session, individuals: Sequence[Individual[G]]
+def _state(ind: object) -> InstanceState[object]:
+    # SQLAlchemy's tracking state of a mapped object; inspect() is untyped
+    return cast("InstanceState[object]", inspect(ind))
+
+
+def save_individuals[G](
+    connection: Connection, individuals: Sequence[Individual[G]]
 ) -> None:
-    """Write the genotypes the database open in ``session`` does not hold.
+    """Write ``individuals``' rows in a few batched statements.
+
+    An individual not yet stored in this file (no id, or one read
+    elsewhere and never stored here) is inserted, keeping a given id. The
+    others get the ids SQLite would give them, one after the largest so
+    far, in order; seachange assigns them itself so that one
+    ``executemany`` can insert them all (a multi-row ``RETURNING`` has no
+    guaranteed order in SQLite). The run's engine is the file's only
+    writer, so nothing takes an id in between. A stored
+    individual gets an ``UPDATE`` of the columns SQLAlchemy saw assigned
+    since it was read; a dict changed in place is not one of them, as with
+    the ORM. Genotypes are written separately (``save_genotypes``).
 
     Parameters
     ----------
-    session : Session
-        The open session of a commit, flushed so every individual has its
-        id.
+    connection : Connection
+        The connection of a commit.
+    individuals : Sequence[Individual]
+        The individuals to save, each once.
+
+    Raises
+    ------
+    ValueError
+        If a stored individual's row is not in this file, as when an
+        individual from another run's database is saved here.
+    """
+    table = SQLModel.metadata.tables["individual"]
+    names = list(Individual.model_fields)
+    new = [
+        ind for ind in individuals if ind.id is None or _state(ind).key is None
+    ]
+    # By identity: == on individuals compares their genotypes too
+    inserting = {id(ind) for ind in new}
+    stored = [ind for ind in individuals if id(ind) not in inserting]
+    if new:
+        largest = connection.scalar(select(func.max(table.c.id))) or 0
+        for ind in new:
+            if ind.id is None:
+                largest += 1
+                ind.id = largest
+            else:
+                largest = max(largest, ind.id)
+        connection.execute(
+            insert(table),
+            [{name: getattr(ind, name) for name in names} for ind in new],
+        )
+        for ind in new:
+            # Now stored: a later save updates it, as the ORM would
+            make_transient_to_detached(ind)
+    by_columns: dict[tuple[str, ...], list[Individual[G]]] = {}
+    for ind in stored:
+        changed = tuple(
+            name for name in names if name not in _state(ind).unmodified
+        )
+        if changed:
+            by_columns.setdefault(changed, []).append(ind)
+    for changed, group in by_columns.items():
+        statement = (
+            update(table)
+            .where(table.c.id == bindparam("row_id"))
+            .values({name: bindparam(f"new_{name}") for name in changed})
+        )
+        result = connection.execute(
+            statement,
+            [
+                {"row_id": ind.id}
+                | {f"new_{name}": getattr(ind, name) for name in changed}
+                for ind in group
+            ],
+        )
+        if result.rowcount != len(group):
+            msg = (
+                f"{len(group) - result.rowcount} of the individuals saved "
+                "are not in this run's database; an individual read from "
+                "another file is saved as new only through Archive, which "
+                "clears its id"
+            )
+            raise ValueError(msg)
+
+
+def save_genotypes[G](
+    connection: Connection, individuals: Sequence[Individual[G]]
+) -> None:
+    """Write the genotypes the database open on ``connection`` lacks.
+
+    Parameters
+    ----------
+    connection : Connection
+        The connection of a commit, after ``save_individuals``, so every
+        individual has its id.
     individuals : Sequence[Individual]
         The individuals to look at; those with nothing to save are skipped.
     """
@@ -507,32 +608,33 @@ def save_genotypes[G](
         if (value := ind.unsaved_genotype()) is not None
     ]
     if values:
-        statement = insert(GenotypeRow).values(values)
-        session.exec(
+        statement = insert(GenotypeRow)
+        connection.execute(
             statement.on_conflict_do_update(
                 index_elements=["individual_id"],
                 set_={"data": statement.excluded.data},
-            )
+            ),
+            values,
         )
     for ind in individuals:
         ind.genotype_saved()
 
 
 def drop_genotypes[G](
-    session: Session, individuals: Sequence[Individual[G]]
+    connection: Connection, individuals: Sequence[Individual[G]]
 ) -> None:
     """Delete the stored genotypes of ``individuals`` and forget them.
 
     Parameters
     ----------
-    session : Session
-        The open session of a commit.
+    connection : Connection
+        The connection of a commit.
     individuals : Sequence[Individual]
         The individuals whose genotypes ``keep_genotypes`` drops.
     """
     ids = [ind.id for ind in individuals]
     for start in range(0, len(ids), _CHUNK):
-        session.exec(
+        connection.execute(
             delete(GenotypeRow).where(
                 col(GenotypeRow.individual_id).in_(ids[start : start + _CHUNK])
             )

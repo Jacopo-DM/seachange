@@ -4,13 +4,13 @@ seachange keeps a run in one SQLite file. This page gives the measured limits of
 
 ## How seachange writes
 
-A run has one writer: the `EA` that owns the database. It stores the starting population once, then commits once per generation, at the end of each `step()`. Everything a generation changed goes to the file in that one commit. The database uses SQLite's defaults: a rollback journal, a full disk sync on every commit, and a 5 second wait for a lock before a write gives up with `database is locked`.
+A run has one writer: the `EA` that owns the database. It stores the starting population once, then commits once per generation, at the end of each `step()`. Everything a generation changed goes to the file in that one commit, in a few batched statements: one insert of the new individuals, one update for each set of changed columns, one write of the new genotypes. The run's connections use SQLite's write-ahead log (`journal_mode=WAL`) with `synchronous=NORMAL`, so a commit does not wait for the disk: on the Lenovo that saves about 10 ms a generation. The price is that a power cut can lose the last commit or two; the file itself stays intact. While a run's database is open, SQLite keeps a `-wal` and a `-shm` file beside it, and folds the `-wal` file back in when the last connection closes. A write waits 5 seconds for a lock before it gives up with `database is locked`.
 
 This shapes how to run things in parallel:
 
 - **Evaluating in parallel** works with one writer. An evaluation operation can hand its individuals to worker processes and set each fitness from what they return; the `EA` then stores the population as usual. The workers never touch the database.
 - **Several runs at once** each need their own file: give each `EA` its own `db_file_path`.
-- **Network filesystems** (NFS and similar) are a poor place for a running database: SQLite's own documentation warns that their file locking is unreliable. Write the run to a local disk and copy the file afterwards.
+- **Network filesystems** (NFS and similar) are a poor place for a running database: SQLite's own documentation warns that their file locking is unreliable, and its write-ahead log, which seachange uses, does not work there at all. Write the run to a local disk and copy the file afterwards, once the run is closed, so the `-wal` file has been folded in.
 
 ## How large a genotype can be
 
@@ -28,7 +28,7 @@ The 1.04 GB genotype fails when it is saved, with `sqlite3.DataError: string or 
 
 ## Many writers on one file
 
-seachange does not write from several processes, but a parallel design that does will meet these limits. In this test, each process wrote rows to one shared file as fast as it could, one commit per row, with the 5 second lock wait seachange uses. A failed write is one that waited longer than that.
+seachange does not write from several processes, but a parallel design that does will meet these limits. Since goal 13 seachange's own connections use the last row's settings, WAL with `synchronous=NORMAL`. In this test, each process wrote rows to one shared file as fast as it could, one commit per row, with the 5 second lock wait seachange uses. A failed write is one that waited longer than that.
 
 | Rows of 40 KB | 8 processes | 128 processes | 512 processes |
 |---|---|---|---|

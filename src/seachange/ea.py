@@ -13,7 +13,7 @@ from rich.progress import (
     TextColumn,
     TimeRemainingColumn,
 )
-from sqlalchemy import Connection, Engine, create_engine, func
+from sqlalchemy import Connection, Engine, create_engine, func, insert
 from sqlmodel import Session, col, or_, select
 
 from seachange.codecs import Genotype
@@ -34,6 +34,7 @@ from seachange.individual import (
     genotype_layout,
     load_genotypes,
     save_genotypes,
+    save_individuals,
 )
 from seachange.population import Population
 
@@ -299,7 +300,7 @@ class EA[G = Genotype]:
                         .where(Individual.requires_eval == False)  # ruff: ignore[true-false-comparison]
                     ).all()
                 )
-                load_genotypes(session, rows)
+                load_genotypes(session.connection(), rows)
         finally:
             # Release the pooled connection; the engine is not used again
             source_engine.dispose()
@@ -459,22 +460,20 @@ class EA[G = Genotype]:
         """
         # A population may hold one individual twice
         present = list({id(ind): ind for ind in self.population}.values())
-        with Session(self.engine, expire_on_commit=False) as session:
-            for ind in present:
-                if ind.time_of_birth == -1:
-                    ind.time_of_birth = self.current_generation
-                ind.time_of_death = self.current_generation
-                session.add(ind)
-            # New individuals need their ids for their genotype rows
-            session.flush()
+        for ind in present:
+            if ind.time_of_birth == -1:
+                ind.time_of_birth = self.current_generation
+            ind.time_of_death = self.current_generation
+        with self.engine.begin() as connection:
+            # Gives new individuals their ids, for their genotype rows
+            save_individuals(connection, present)
             if self.keep_genotypes != "all":
-                self._keep_ranked(session, present, self.keep_genotypes)
-            save_genotypes(session, present)
-            session.commit()
+                self._keep_ranked(connection, present, self.keep_genotypes)
+            save_genotypes(connection, present)
 
     def _keep_ranked(
         self,
-        session: Session,
+        connection: Connection,
         present: Sequence[Individual[G]],
         ranks: tuple[Rank, ...],
     ) -> None:
@@ -488,9 +487,9 @@ class EA[G = Genotype]:
 
         Parameters
         ----------
-        session : Session
-            The open session of the commit, flushed so every individual
-            has its id.
+        connection : Connection
+            The connection of the commit, after the rows are saved, so every
+            individual has its id.
         present : Sequence[Individual]
             The generation's individuals, each once.
         ranks : tuple of {"best", "median", "worst"}
@@ -501,17 +500,19 @@ class EA[G = Genotype]:
             key=lambda ind: ind.fitness,
             reverse=self.direction == "max",
         )
-        if ranked:
+        if ranked and ranks:
             position = {"best": 0, "median": len(ranked) // 2, "worst": -1}
-            for rank in ranks:
-                session.add(
-                    KeptGenotype(
-                        generation=self.current_generation,
-                        rank=rank,
-                        # The flush gave every individual its id
-                        individual_id=cast("int", ranked[position[rank]].id),
-                    )
-                )
+            connection.execute(
+                insert(KeptGenotype),
+                [
+                    {
+                        "generation": self.current_generation,
+                        "rank": rank,
+                        "individual_id": ranked[position[rank]].id,
+                    }
+                    for rank in ranks
+                ],
+            )
         dying = [
             ind
             for ind in present
@@ -520,7 +521,7 @@ class EA[G = Genotype]:
         if not dying:
             return
         kept = set(
-            session.exec(
+            connection.scalars(
                 select(KeptGenotype.individual_id).where(
                     col(KeptGenotype.individual_id).in_([
                         ind.id for ind in dying
@@ -528,7 +529,7 @@ class EA[G = Genotype]:
                 )
             )
         )
-        drop_genotypes(session, [ind for ind in dying if ind.id not in kept])
+        drop_genotypes(connection, [ind for ind in dying if ind.id not in kept])
 
     # -- Query helpers ---------------------------------------------------------
 
@@ -576,7 +577,7 @@ class EA[G = Genotype]:
 
         with Session(self.engine) as session:
             rows = Population(list(session.exec(statement).all()))
-            load_genotypes(session, rows.to_list())
+            load_genotypes(session.connection(), rows.to_list())
         # The run stored these rows, so their genotypes are of G
         return cast("Population[G]", rows)
 

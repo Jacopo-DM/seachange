@@ -48,7 +48,7 @@ def swap_genes[T](
     return arr
 
 
-def cut_points(n: int) -> tuple[int, int]:
+def cut_points(n: int) -> "slice[int, int, None]":
     """Pick two different cut points of a sequence of length ``n``.
 
     Parameters
@@ -58,9 +58,9 @@ def cut_points(n: int) -> tuple[int, int]:
 
     Returns
     -------
-    tuple[int, int]
-        ``lo < hi``, both in ``[0, n]``; ``seq[lo:hi]`` is the segment
-        between them.
+    slice
+        ``slice(lo, hi)`` with ``lo < hi``, both in ``[0, n]``; ``seq[cut]``
+        is the segment between them.
     """
     lo, hi = sorted(
         cast(
@@ -68,7 +68,7 @@ def cut_points(n: int) -> tuple[int, int]:
             rng.choice(np.arange(n + 1), size=2, replace=False).tolist(),
         ),
     )
-    return lo, hi
+    return slice(lo, hi)
 
 
 # -- Settings ------------------------------------------------------------------

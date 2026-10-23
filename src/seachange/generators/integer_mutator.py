@@ -156,8 +156,8 @@ class IntegerMutator:
         if rng.random() >= mutation_probability:
             return list(individual)
         arr: list[int] = list(individual)
-        lo, hi = cut_points(len(arr))
-        arr[lo:hi] = arr[lo:hi][::-1]
+        cut = cut_points(len(arr))
+        arr[cut] = arr[cut][::-1]
         return arr
 
     @staticmethod
@@ -187,11 +187,11 @@ class IntegerMutator:
         if rng.random() >= mutation_probability:
             return list(individual)
         arr: list[int] = list(individual)
-        lo, hi = cut_points(len(arr))
-        segment: list[int] = arr[lo:hi]
+        cut = cut_points(len(arr))
+        segment: list[int] = arr[cut]
         shuffled: list[int] = cast(
             "list[int]",
             rng.permutation(segment).tolist(),
         )
-        arr[lo:hi] = shuffled
+        arr[cut] = shuffled
         return arr

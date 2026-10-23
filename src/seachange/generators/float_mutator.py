@@ -260,6 +260,6 @@ class FloatMutator:
         if rng.random() >= mutation_probability:
             return list(individual)
         arr: list[float] = list(individual)
-        lo, hi = cut_points(len(arr))
-        arr[lo:hi] = arr[lo:hi][::-1]
+        cut = cut_points(len(arr))
+        arr[cut] = arr[cut][::-1]
         return arr

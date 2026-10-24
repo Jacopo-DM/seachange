@@ -243,6 +243,35 @@ def test_archive_draws_are_saved_into_a_new_run_as_new_rows(
     )
 
 
+def test_archive_draws_join_a_new_run_alive_and_newborn(
+    tmp_path: Path,
+) -> None:
+    """Dead draws of a late generation are alive and born at the start."""
+    old = tmp_path / "old.db"
+    with EA(make_pop(SIZE), [noop], db_file_path=old, quiet=True) as ea:
+        ea.current_generation = 50
+        for ind in ea.population:
+            ind.alive = False
+        ea._commit()  # ruff: ignore[private-member-access]  # dead rows to draw
+    with Archive(old) as archive:
+        drawn = archive.random_population(2, only_dead=True).to_list()
+    assert [(ind.alive, ind.time_of_birth) for ind in drawn] == [
+        (False, 0),
+        (False, 0),
+    ]
+    with EA(
+        Population(drawn), [noop], db_file_path=tmp_path / "new.db", quiet=True
+    ) as ea:
+        ea.current_generation = 3
+        ea.fetch_population()
+        assert len(ea.population) == 2  # ruff: ignore[magic-value-comparison]
+    rows = _stored_rows(tmp_path / "new.db")
+    assert [(r.alive, r.time_of_birth, r.time_of_death) for r in rows] == [
+        (True, 0, 0),
+        (True, 0, 0),
+    ]
+
+
 def test_archive_draws_survive_a_new_run_replacing_their_file(
     tmp_path: Path,
 ) -> None:

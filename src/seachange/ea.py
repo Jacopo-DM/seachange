@@ -468,6 +468,11 @@ class EA[G = Genotype]:
         # A population may hold one individual twice
         present = list({id(ind): ind for ind in self.population}.values())
         for ind in present:
+            if is_new(ind) and ind.from_another_file():
+                # Drawn from an Archive: it joins this run now, as
+                # restart's survivors do
+                ind.alive = True
+                ind.time_of_birth = -1
             if ind.time_of_birth == -1:
                 ind.time_of_birth = self.current_generation
             ind.time_of_death = self.current_generation

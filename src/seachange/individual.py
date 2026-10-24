@@ -327,6 +327,16 @@ class Individual[G = Genotype](SQLModel, table=True):
             _genotype=None, _genotype_unsaved=False, _genotype_source=source
         )
 
+    def from_another_file(self) -> bool:
+        """Return whether this individual was read from a file by ``Archive``.
+
+        Returns
+        -------
+        bool
+            ``True`` until a run saves it.
+        """
+        return self._genotype_source is not None
+
     def read_genotype_if_in(self, path: Path) -> None:
         """Read the genotype now if it is still stored in the file ``path``.
 

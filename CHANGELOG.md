@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- **Individuals drawn from `Archive` can seed a new run.** `archive.random_population(3)` and the other draws used to raise `StaleDataError` when added to a new run's population: the row kept its old file's identity. They are now saved as new rows, with fresh ids, and their genotypes are copied from the old file.
+- **Individuals drawn from `Archive` can seed a new run.** `archive.random_population(3)` and the other draws used to raise `StaleDataError` when added to a new run's population: the row kept its old file's identity. They are now saved as new rows, with fresh ids, alive and born in the generation they join the new run (as `EA.restart` treats survivors), keeping their fitness and tags; their genotypes are copied from the old file, also when the new run is written over that file.
 
 ### Changed
 

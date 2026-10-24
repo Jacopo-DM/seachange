@@ -371,28 +371,25 @@ class Individual[G = Genotype](SQLModel, table=True):
         """
         self._set_private(_stored_in=identity)
 
-    def leave_other_run(self, identity: int) -> None:
-        """Make an individual another run saved new to the run ``identity``.
+    def stored_elsewhere(self, identity: int) -> bool:
+        """Return whether a run file other than ``identity``'s holds the row.
 
-        Its row is in another file, so it joins this run as an individual
+        Such an individual joins the run ``identity`` as an individual
         drawn from an ``Archive`` does: a new row, a fresh id, and its
-        genotype written again. One no run has saved, or saved by this run,
-        is left as it is.
+        genotype written again. One no run has saved, or saved by that
+        run, is not elsewhere.
 
         Parameters
         ----------
         identity : int
             The ``ea_database.file_identity`` of the run's file.
+
+        Returns
+        -------
+        bool
+            ``True`` for an individual another run saved or loaded.
         """
-        if self._stored_in is None or self._stored_in == identity:
-            return
-        make_transient(self)
-        self.id = None
-        self._set_private(
-            _genotype_unsaved=self.genotype_ is not None,
-            _drawn=True,
-            _stored_in=None,
-        )
+        return self._stored_in is not None and self._stored_in != identity
 
     def from_another_file(self) -> bool:
         """Return whether this individual was read from a file by ``Archive``.
@@ -641,7 +638,9 @@ def is_new(ind: object) -> bool:
 
 
 def save_individuals[G](
-    connection: Connection, individuals: Sequence[Individual[G]]
+    connection: Connection,
+    individuals: Sequence[Individual[G]],
+    moved: Sequence[Individual[G]] = (),
 ) -> list[Individual[G]]:
     """Write ``individuals``' rows in a few batched statements.
 
@@ -662,6 +661,10 @@ def save_individuals[G](
         The connection of a commit.
     individuals : Sequence[Individual]
         The individuals to save, each once.
+    moved : Sequence[Individual], optional
+        Those among ``individuals`` that another run's file holds
+        (``Individual.stored_elsewhere``), with their ids cleared: they
+        are inserted as new.
 
     Returns
     -------
@@ -679,7 +682,8 @@ def save_individuals[G](
     """
     table = SQLModel.metadata.tables["individual"]
     names = list(Individual.model_fields)
-    new = [ind for ind in individuals if is_new(ind)]
+    moving = {id(ind) for ind in moved}
+    new = [ind for ind in individuals if is_new(ind) or id(ind) in moving]
     # By identity: == on individuals compares their genotypes too
     inserting = {id(ind) for ind in new}
     stored = [ind for ind in individuals if id(ind) not in inserting]
@@ -798,12 +802,15 @@ def mark_genotypes_saved[G](
 
 
 def save_genotypes[G](
-    connection: Connection, individuals: Sequence[Individual[G]]
+    connection: Connection,
+    individuals: Sequence[Individual[G]],
+    moved: Sequence[Individual[G]] = (),
 ) -> None:
     """Write the genotypes the database open on ``connection`` lacks.
 
-    The individuals count them as unsaved until ``mark_saved`` runs after
-    the commit, so a failed commit writes them again at the next.
+    The individuals count them as unsaved until ``mark_genotypes_saved``
+    runs after the commit, so a failed commit writes them again at the
+    next.
 
     Parameters
     ----------
@@ -812,11 +819,20 @@ def save_genotypes[G](
         individual has its id.
     individuals : Sequence[Individual]
         The individuals to look at; those with nothing to save are skipped.
+    moved : Sequence[Individual], optional
+        Those among ``individuals`` that ``save_individuals`` inserted
+        from another run's file: their genotypes are written too.
     """
+    moving = {id(ind) for ind in moved}
     values = [
         {"individual_id": ind.id, "data": value}
         for ind in individuals
-        if (value := ind.unsaved_genotype()) is not None
+        if (
+            value := ind.genotype_
+            if id(ind) in moving
+            else ind.unsaved_genotype()
+        )
+        is not None
     ]
     if values:
         statement = insert(GenotypeRow)
@@ -834,8 +850,8 @@ def drop_genotypes[G](
 ) -> None:
     """Delete the stored genotypes of ``individuals``.
 
-    The individuals keep them in memory until ``mark_saved`` runs after
-    the commit, so a failed commit leaves them as they were.
+    The individuals keep them in memory until ``mark_genotypes_saved``
+    runs after the commit, so a failed commit leaves them as they were.
 
     Parameters
     ----------

@@ -196,8 +196,7 @@ class EA[G = Genotype]:
         with self.engine.connect() as connection:
             self._identity = file_identity(connection)
         for ind in population:
-            ind.leave_other_run(self._identity)
-            if ind.from_another_file():
+            if ind.from_another_file() or ind.stored_elsewhere(self._identity):
                 # Drawn from an Archive, or saved by another run, to seed
                 # this run: it starts alive, as restart's survivors do
                 ind.alive = True
@@ -480,21 +479,29 @@ class EA[G = Genotype]:
         """
         # A population may hold one individual twice
         present = list({id(ind): ind for ind in self.population}.values())
+        moved = [ind for ind in present if ind.stored_elsewhere(self._identity)]
+        # What a failed commit gives back, as the ORM's rollback did
+        undo = [
+            (ind, ind.id, ind.time_of_birth)
+            for ind in present
+            if is_new(ind) or ind.stored_elsewhere(self._identity)
+        ]
+        # By identity: == on individuals compares their genotypes too
+        moving = {id(ind) for ind in moved}
+        for ind in moved:
+            ind.id = None
         for ind in present:
-            ind.leave_other_run(self._identity)
-            if is_new(ind) and ind.from_another_file():
+            if id(ind) in moving or (is_new(ind) and ind.from_another_file()):
                 # Drawn from an Archive or saved by another run: born in
                 # this run when it joins it
                 ind.time_of_birth = -1
             if ind.time_of_birth == -1:
                 ind.time_of_birth = self.current_generation
             ind.time_of_death = self.current_generation
-        # The ids a failed commit gives back, as the ORM's rollback did
-        ids = [(ind, ind.id) for ind in present if is_new(ind)]
         try:
             with self.engine.begin() as connection:
                 # Gives new individuals their ids, for their genotype rows
-                saved = save_individuals(connection, present)
+                saved = save_individuals(connection, present, moved)
                 dropped = (
                     []
                     if self.keep_genotypes == "all"
@@ -502,10 +509,16 @@ class EA[G = Genotype]:
                         connection, present, self.keep_genotypes
                     )
                 )
-                save_genotypes(connection, present)
+                gone = {id(ind) for ind in dropped}
+                save_genotypes(
+                    connection,
+                    [ind for ind in present if id(ind) not in gone],
+                    moved,
+                )
         except BaseException:
-            for ind, old in ids:
-                ind.id = old
+            for ind, old_id, old_birth in undo:
+                ind.id = old_id
+                ind.time_of_birth = old_birth
             raise
         mark_saved(saved, self._identity)
         mark_genotypes_saved(present, dropped)

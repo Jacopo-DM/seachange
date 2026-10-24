@@ -483,9 +483,11 @@ def _fail_after(
     real = save_genotypes
 
     def save_then_fail(
-        connection: Connection, individuals: list[Individual]
+        connection: Connection,
+        individuals: list[Individual],
+        moved: list[Individual],
     ) -> None:
-        real(connection, individuals)
+        real(connection, individuals, moved)
         msg = "disk full"
         raise OSError(msg)
 
@@ -591,3 +593,47 @@ def test_a_draw_whose_genotype_was_dropped_says_where(tmp_path: Path) -> None:
         pytest.raises(ValueError, match="the run it was drawn from"),
     ):
         _ = archive.random_population(1)[0].genotype
+
+
+def test_a_child_retired_at_birth_keeps_no_genotype(tmp_path: Path) -> None:
+    """keep_genotypes drops a genotype that was never stored, too."""
+    with EA(
+        make_pop(2),
+        [noop],
+        db_file_path=tmp_path / "run.db",
+        keep_genotypes=["best"],
+        quiet=True,
+    ) as ea:
+        stillborn = make_ind(-5)
+        stillborn.alive = False
+        ea.population = Population([*ea.population, stillborn])
+        ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
+    with closing(sqlite3.connect(tmp_path / "run.db")) as connection:
+        kept = connection.execute(
+            "SELECT individual_id FROM genotype ORDER BY individual_id"
+        ).fetchall()
+    assert kept == [(1,), (2,)]
+
+
+def test_a_failed_commit_leaves_a_moved_individual_in_its_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Moving to another run happens only when that run's commit succeeds."""
+    with EA(
+        make_pop(1), [noop], db_file_path=tmp_path / "a.db", quiet=True
+    ) as first:
+        (ind,) = first.population
+    with EA(
+        make_pop(1), [noop], db_file_path=tmp_path / "b.db", quiet=True
+    ) as second:
+        second.population = Population([*second.population, ind])
+        _fail_after(monkeypatch)
+        with pytest.raises(OSError, match="disk full"):
+            second._commit()  # ruff: ignore[private-member-access]  # the commit under test
+        monkeypatch.undo()
+    assert (ind.id, ind.time_of_birth) == (1, 0)
+    first.population = Population([ind])
+    first.current_generation = 1
+    first._commit()  # ruff: ignore[private-member-access]  # back in its own run
+    assert _ids(tmp_path / "a.db") == [1]
+    first.close()

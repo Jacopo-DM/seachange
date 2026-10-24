@@ -5,13 +5,14 @@ from contextlib import closing
 from pathlib import Path
 
 import pytest
+from sqlalchemy import Connection
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
 from sqlalchemy.orm.exc import StaleDataError
 from sqlmodel import Session, col, create_engine, select
 
 from seachange import EA, Archive, EAOperation, Individual, Population
-from seachange.individual import save_individuals
-from tests.ea_helpers import double_pop, make_pop, noop
+from seachange.individual import save_genotypes, save_individuals
+from tests.ea_helpers import double_pop, make_ind, make_pop, noop
 
 pytestmark = pytest.mark.usefixtures("dispose_engines")
 
@@ -472,3 +473,64 @@ def test_replacing_a_database_drops_its_old_journal(tmp_path: Path) -> None:
             )
     EA(make_pop(SIZE), [noop], db_file_path=path, quiet=True).close()
     assert _ids(path) == list(range(1, SIZE + 1))
+
+
+def _fail_after(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # save_genotypes does its work, then the commit fails, as a failed
+    # COMMIT would
+    real = save_genotypes
+
+    def save_then_fail(
+        connection: Connection, individuals: list[Individual]
+    ) -> None:
+        real(connection, individuals)
+        msg = "disk full"
+        raise OSError(msg)
+
+    monkeypatch.setattr("seachange.ea.save_genotypes", save_then_fail)
+
+
+def test_a_failed_commit_saves_the_genotypes_at_the_next(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A genotype is marked saved only once its commit succeeds."""
+    with EA(
+        make_pop(1), [noop], db_file_path=tmp_path / "run.db", quiet=True
+    ) as ea:
+        child = make_ind(7)
+        ea.population = Population([*ea.population, child])
+        _fail_after(monkeypatch)
+        with pytest.raises(OSError, match="disk full"):
+            ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
+        monkeypatch.undo()
+        ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
+    with Archive(tmp_path / "run.db") as archive:
+        stored = sorted(
+            repr(ind.genotype) for ind in archive.random_population(2)
+        )
+    assert stored == ["[0.0]", "[7.0]"]
+
+
+def test_a_failed_commit_keeps_the_genotypes_it_would_drop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """keep_genotypes drops a genotype from memory only once committed."""
+    with EA(
+        make_pop(2),
+        [noop],
+        db_file_path=tmp_path / "run.db",
+        keep_genotypes=[],
+        quiet=True,
+    ) as ea:
+        dying = ea.population[0]
+        dying.alive = False
+        _fail_after(monkeypatch)
+        with pytest.raises(OSError, match="disk full"):
+            ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
+        assert dying.genotype == [0.0]
+        monkeypatch.undo()
+        ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
+        with pytest.raises(ValueError, match="was not kept"):
+            _ = dying.genotype

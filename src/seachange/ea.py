@@ -34,6 +34,7 @@ from seachange.individual import (
     genotype_layout,
     is_new,
     load_genotypes,
+    mark_genotypes_saved,
     mark_saved,
     save_genotypes,
     save_individuals,
@@ -484,21 +485,27 @@ class EA[G = Genotype]:
             with self.engine.begin() as connection:
                 # Gives new individuals their ids, for their genotype rows
                 saved = save_individuals(connection, present)
-                if self.keep_genotypes != "all":
-                    self._keep_ranked(connection, present, self.keep_genotypes)
+                dropped = (
+                    []
+                    if self.keep_genotypes == "all"
+                    else self._keep_ranked(
+                        connection, present, self.keep_genotypes
+                    )
+                )
                 save_genotypes(connection, present)
         except BaseException:
             for ind, old in ids:
                 ind.id = old
             raise
         mark_saved(saved)
+        mark_genotypes_saved(present, dropped)
 
     def _keep_ranked(
         self,
         connection: Connection,
         present: Sequence[Individual[G]],
         ranks: tuple[Rank, ...],
-    ) -> None:
+    ) -> list[Individual[G]]:
         """Record this generation's ``ranks``; drop the other dead genotypes.
 
         The evaluated individuals present in the generation (alive, or
@@ -516,6 +523,12 @@ class EA[G = Genotype]:
             The generation's individuals, each once.
         ranks : tuple of {"best", "median", "worst"}
             The ranks to keep.
+
+        Returns
+        -------
+        list[Individual]
+            The individuals whose genotypes were deleted, to forget them
+            once the commit succeeds.
         """
         ranked = sorted(
             (ind for ind in present if not ind.requires_eval),
@@ -541,7 +554,7 @@ class EA[G = Genotype]:
             if not ind.alive and ind.genotype_ is not None
         ]
         if not dying:
-            return
+            return []
         kept = set(
             connection.scalars(
                 select(KeptGenotype.individual_id).where(
@@ -551,7 +564,9 @@ class EA[G = Genotype]:
                 )
             )
         )
-        drop_genotypes(connection, [ind for ind in dying if ind.id not in kept])
+        dropped = [ind for ind in dying if ind.id not in kept]
+        drop_genotypes(connection, dropped)
+        return dropped
 
     # -- Query helpers ---------------------------------------------------------
 

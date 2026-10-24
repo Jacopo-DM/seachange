@@ -736,10 +736,35 @@ def mark_saved[G](individuals: Sequence[Individual[G]]) -> None:
         ind._set_private(_drawn=False)  # ruff: ignore[private-member-access]  # the module that owns the mark
 
 
+def mark_genotypes_saved[G](
+    present: Sequence[Individual[G]], dropped: Sequence[Individual[G]]
+) -> None:
+    """Note that a commit stored ``present``'s genotypes and deleted others.
+
+    Called after the commit of ``save_genotypes`` and ``drop_genotypes``,
+    so a failed commit leaves every genotype in memory, unsaved where it
+    was.
+
+    Parameters
+    ----------
+    present : Sequence[Individual]
+        The individuals ``save_genotypes`` was given.
+    dropped : Sequence[Individual]
+        The individuals ``drop_genotypes`` was given.
+    """
+    for ind in present:
+        ind.genotype_saved()
+    for ind in dropped:
+        ind.drop_genotype()
+
+
 def save_genotypes[G](
     connection: Connection, individuals: Sequence[Individual[G]]
 ) -> None:
     """Write the genotypes the database open on ``connection`` lacks.
+
+    The individuals count them as unsaved until ``mark_saved`` runs after
+    the commit, so a failed commit writes them again at the next.
 
     Parameters
     ----------
@@ -763,14 +788,15 @@ def save_genotypes[G](
             ),
             values,
         )
-    for ind in individuals:
-        ind.genotype_saved()
 
 
 def drop_genotypes[G](
     connection: Connection, individuals: Sequence[Individual[G]]
 ) -> None:
-    """Delete the stored genotypes of ``individuals`` and forget them.
+    """Delete the stored genotypes of ``individuals``.
+
+    The individuals keep them in memory until ``mark_saved`` runs after
+    the commit, so a failed commit leaves them as they were.
 
     Parameters
     ----------
@@ -786,8 +812,6 @@ def drop_genotypes[G](
                 col(GenotypeRow.individual_id).in_(ids[start : start + _CHUNK])
             )
         )
-    for ind in individuals:
-        ind.drop_genotype()
 
 
 def check_rows(rows: Sequence[Individual]) -> list[Individual]:

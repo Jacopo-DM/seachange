@@ -183,6 +183,10 @@ class EA[G = Genotype]:
         # read from the new, empty one: read it now
         for ind in population:
             ind.read_genotype_if_in(path)
+            if ind.from_another_file():
+                # Drawn from an Archive to seed this run: it starts alive,
+                # as restart's survivors do
+                ind.alive = True
         self.engine: Engine = setup_database(
             db_file_path=path,
             db_handling=db_handling or config.db_handling,
@@ -469,9 +473,7 @@ class EA[G = Genotype]:
         present = list({id(ind): ind for ind in self.population}.values())
         for ind in present:
             if is_new(ind) and ind.from_another_file():
-                # Drawn from an Archive: it joins this run now, as
-                # restart's survivors do
-                ind.alive = True
+                # Drawn from an Archive: born in this run when it joins it
                 ind.time_of_birth = -1
             if ind.time_of_birth == -1:
                 ind.time_of_birth = self.current_generation

@@ -1,12 +1,19 @@
 """Creation of the EA database file."""
 
 import os
+import secrets
 import sqlite3
 from contextlib import closing
 from pathlib import Path
 
 from rich.console import Console
-from sqlalchemy import Engine, PoolProxiedConnection, create_engine, event
+from sqlalchemy import (
+    Connection,
+    Engine,
+    PoolProxiedConnection,
+    create_engine,
+    event,
+)
 from sqlalchemy.pool import ConnectionPoolEntry
 from sqlmodel import SQLModel
 
@@ -45,7 +52,8 @@ def setup_database(
     -------
     Engine
         A SQLAlchemy engine connected to the database, with all
-        SQLModel tables created.
+        SQLModel tables created and a random identity in
+        ``PRAGMA user_version`` (``file_identity``).
 
     Raises
     ------
@@ -71,7 +79,34 @@ def setup_database(
     engine = create_engine(f"sqlite:///{db_file_path}")
     event.listen(engine, "connect", _write_ahead)
     SQLModel.metadata.create_all(engine)
+    with engine.begin() as connection:
+        # Not seachange's generators: a seeded run must not change them
+        connection.exec_driver_sql(
+            f"PRAGMA user_version = {secrets.randbelow(_MAX_ID) + 1}"
+        )
     return engine
+
+
+# The file's identity, in SQLite's user_version, a signed 32-bit header
+# field: Archive's individuals check it, so that one drawn from a file a
+# later run replaced cannot read that run's genotypes
+_MAX_ID = 2**31 - 1
+
+
+def file_identity(connection: Connection) -> int:
+    """Return the identity ``setup_database`` gave the file, ``0`` if none.
+
+    Parameters
+    ----------
+    connection : Connection
+        An open connection to the file.
+
+    Returns
+    -------
+    int
+        ``PRAGMA user_version``; files written before 0.2 hold ``0``.
+    """
+    return int(connection.exec_driver_sql("PRAGMA user_version").scalar_one())
 
 
 def _write_ahead(

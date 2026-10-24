@@ -62,11 +62,15 @@ class GenotypeSource(Model):
         ``"table"`` for a ``genotype`` table, as seachange writes it;
         ``"row"`` for a ``genotype_`` column in the individual table, as
         earlier seachange and ARIEL wrote it.
+    identity : int
+        The file's identity when the individual was read
+        (``ea_database.file_identity``).
     """
 
     path: Path
     row_id: int
     layout: GenotypeLayout
+    identity: int
 
     def read(self) -> object | None:
         """Return the stored genotype, or ``None`` if there is none.
@@ -75,7 +79,21 @@ class GenotypeSource(Model):
         -------
         object or None
             As ``read_stored`` returns it.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the file is gone.
+        ValueError
+            If another file has replaced it since the individual was read,
+            as when a new run is written to the same path.
         """
+        if not self.path.exists():
+            msg = (
+                f"genotype of row {self.row_id} is stored in {self.path}, "
+                "which no longer exists"
+            )
+            raise FileNotFoundError(msg)
         sql = (
             "SELECT data FROM genotype WHERE individual_id = ?"
             if self.layout == "table"
@@ -83,6 +101,14 @@ class GenotypeSource(Model):
         )
         uri = f"{self.path.as_uri()}?mode=ro"
         with closing(sqlite3.connect(uri, uri=True)) as connection:
+            (identity,) = connection.execute("PRAGMA user_version").fetchone()
+            if identity != self.identity:
+                msg = (
+                    f"genotype of row {self.row_id} was in {self.path}, "
+                    "which another run has replaced since; read genotypes "
+                    "before writing a run over their file"
+                )
+                raise ValueError(msg)
             row = connection.execute(sql, (self.row_id,)).fetchone()
         return read_stored(None if row is None else row[0])
 
@@ -158,6 +184,8 @@ class Individual[G = Genotype](SQLModel, table=True):
     _genotype_unsaved: bool = PrivateAttr(default=False)
     # Where to read the genotype from when it is first asked for
     _genotype_source: GenotypeSource | None = PrivateAttr(default=None)
+    # Read by Archive and not yet saved by a run: a new genotype keeps it
+    _drawn: bool = PrivateAttr(default=False)
 
     # -- Fitness property ------------------------------------------------------
 
@@ -324,7 +352,10 @@ class Individual[G = Genotype](SQLModel, table=True):
             Where the genotype is stored.
         """
         self._set_private(
-            _genotype=None, _genotype_unsaved=False, _genotype_source=source
+            _genotype=None,
+            _genotype_unsaved=False,
+            _genotype_source=source,
+            _drawn=True,
         )
 
     def from_another_file(self) -> bool:
@@ -333,9 +364,10 @@ class Individual[G = Genotype](SQLModel, table=True):
         Returns
         -------
         bool
-            ``True`` until a run saves it.
+            ``True`` until a run saves it, also after its genotype is
+            replaced.
         """
-        return self._genotype_source is not None
+        return self._drawn
 
     def read_genotype_if_in(self, path: Path) -> None:
         """Read the genotype now if it is still stored in the file ``path``.
@@ -701,6 +733,7 @@ def mark_saved[G](individuals: Sequence[Individual[G]]) -> None:
             # takes only an individual with no key
             make_transient(ind)
         make_transient_to_detached(ind)
+        ind._set_private(_drawn=False)  # ruff: ignore[private-member-access]  # the module that owns the mark
 
 
 def save_genotypes[G](

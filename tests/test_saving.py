@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError, InvalidRequestError
 from sqlalchemy.orm.exc import StaleDataError
 from sqlmodel import Session, col, create_engine, select
 
-from seachange import EA, Archive, Individual, Population
+from seachange import EA, Archive, EAOperation, Individual, Population
 from seachange.individual import save_individuals
 from tests.ea_helpers import double_pop, make_pop, noop
 
@@ -270,6 +270,75 @@ def test_archive_draws_join_a_new_run_alive_and_newborn(
         (True, 0, 0),
         (True, 0, 0),
     ]
+
+
+def _dead_draws(path: Path, count: int) -> list[Individual]:
+    # Individuals that died in generation 5 of a finished run at path
+    with EA(make_pop(SIZE), [noop], db_file_path=path, quiet=True) as ea:
+        ea.current_generation = 5
+        for ind in ea.population:
+            ind.alive = False
+        ea._commit()  # ruff: ignore[private-member-access]  # dead rows to draw
+    with Archive(path) as archive:
+        return archive.random_population(count, only_dead=True).to_list()
+
+
+def test_a_draw_given_a_new_genotype_still_starts_alive(
+    tmp_path: Path,
+) -> None:
+    """Draw, mutate, seed: a new genotype does not hide where it came from."""
+    (draw,) = _dead_draws(tmp_path / "old.db", 1)
+    draw.genotype = [99.0]
+    EA(
+        Population([draw]), [noop], db_file_path=tmp_path / "new.db", quiet=True
+    ).close()
+    (row,) = _stored_rows(tmp_path / "new.db")
+    assert (row.alive, row.time_of_birth) == (True, 0)
+    with Archive(tmp_path / "new.db") as archive:
+        (stored,) = archive.random_population(1)
+        assert stored.genotype == [99.0]
+
+
+def test_a_draw_an_operation_adds_dead_stays_dead(tmp_path: Path) -> None:
+    """Only a seeding draw is revived; an operation's choice stands."""
+    (draw,) = _dead_draws(tmp_path / "old.db", 1)
+
+    @EAOperation
+    def add_dead(population: Population) -> Population:
+        draw.alive = False
+        return Population([*population, draw])
+
+    with EA(
+        make_pop(1),
+        [add_dead],
+        db_file_path=tmp_path / "new.db",
+        num_steps=1,
+        quiet=True,
+    ) as ea:
+        ea.step()
+    rows = _stored_rows(tmp_path / "new.db")
+    assert [(r.id, r.alive, r.time_of_birth) for r in rows] == [
+        (1, True, 0),
+        (2, False, 1),
+    ]
+
+
+def test_a_draw_from_a_replaced_file_refuses_to_read(tmp_path: Path) -> None:
+    """A run written over the file later makes the draw's genotype fail."""
+    path = tmp_path / "run.db"
+    (draw,) = _dead_draws(path, 1)
+    EA(make_pop(SIZE), [noop], db_file_path=path, quiet=True).close()
+    with pytest.raises(ValueError, match="another run has replaced"):
+        _ = draw.genotype
+
+
+def test_a_draw_from_a_deleted_file_names_the_file(tmp_path: Path) -> None:
+    """Reading a genotype whose file is gone says which file it was."""
+    path = tmp_path / "run.db"
+    (draw,) = _dead_draws(path, 1)
+    path.unlink()
+    with pytest.raises(FileNotFoundError, match="which no longer exists"):
+        _ = draw.genotype
 
 
 def test_archive_draws_survive_a_new_run_replacing_their_file(

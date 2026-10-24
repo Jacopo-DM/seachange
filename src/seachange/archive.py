@@ -12,6 +12,7 @@ from sqlmodel.sql.expression import SelectOfScalar
 
 from seachange._rng import py_rng
 from seachange.codecs import Genotype
+from seachange.ea_database import file_identity
 from seachange.ea_settings import Direction
 from seachange.individual import (
     GenotypeSource,
@@ -100,6 +101,7 @@ class Archive[G = Genotype]:
         self.engine: Engine = create_engine(f"sqlite:///{self.db_path}")
         with self.engine.connect() as connection:
             self._layout = genotype_layout(connection)
+            self._identity = file_identity(connection)
 
     # -- Internal helpers ------------------------------------------------------
 
@@ -199,7 +201,10 @@ class Archive[G = Genotype]:
         for ind in rows:
             ind.read_genotype_from(
                 GenotypeSource(
-                    path=path, row_id=cast("int", ind.id), layout=self._layout
+                    path=path,
+                    row_id=cast("int", ind.id),
+                    layout=self._layout,
+                    identity=self._identity,
                 )
             )
             make_transient(ind)

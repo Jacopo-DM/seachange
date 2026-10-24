@@ -186,6 +186,8 @@ class Individual[G = Genotype](SQLModel, table=True):
     _genotype_source: GenotypeSource | None = PrivateAttr(default=None)
     # Read by Archive and not yet saved by a run: a new genotype keeps it
     _drawn: bool = PrivateAttr(default=False)
+    # The identity of the run file that last saved or loaded it, if any
+    _stored_in: int | None = PrivateAttr(default=None)
 
     # -- Fitness property ------------------------------------------------------
 
@@ -356,6 +358,39 @@ class Individual[G = Genotype](SQLModel, table=True):
             _genotype_unsaved=False,
             _genotype_source=source,
             _drawn=True,
+        )
+
+    def stored_in(self, identity: int) -> None:
+        """Note that the run file with ``identity`` holds this row.
+
+        Parameters
+        ----------
+        identity : int
+            The file's ``ea_database.file_identity``.
+        """
+        self._set_private(_stored_in=identity)
+
+    def leave_other_run(self, identity: int) -> None:
+        """Make an individual another run saved new to the run ``identity``.
+
+        Its row is in another file, so it joins this run as an individual
+        drawn from an ``Archive`` does: a new row, a fresh id, and its
+        genotype written again. One no run has saved, or saved by this run,
+        is left as it is.
+
+        Parameters
+        ----------
+        identity : int
+            The ``ea_database.file_identity`` of the run's file.
+        """
+        if self._stored_in is None or self._stored_in == identity:
+            return
+        make_transient(self)
+        self.id = None
+        self._set_private(
+            _genotype_unsaved=self.genotype_ is not None,
+            _drawn=True,
+            _stored_in=None,
         )
 
     def from_another_file(self) -> bool:
@@ -715,7 +750,7 @@ def _row_id(ind: object) -> object:
     return key[1][0]
 
 
-def mark_saved[G](individuals: Sequence[Individual[G]]) -> None:
+def mark_saved[G](individuals: Sequence[Individual[G]], identity: int) -> None:
     """Note that ``individuals``' rows are now stored as they are.
 
     Called after the commit of ``save_individuals``, so a failed commit
@@ -726,8 +761,11 @@ def mark_saved[G](individuals: Sequence[Individual[G]]) -> None:
     ----------
     individuals : Sequence[Individual]
         What ``save_individuals`` returned.
+    identity : int
+        The ``ea_database.file_identity`` of the file they are stored in.
     """
     for ind in individuals:
+        ind.stored_in(identity)
         if not is_new(ind):
             # make_transient_to_detached clears the changes it saw, but
             # takes only an individual with no key

@@ -534,3 +534,38 @@ def test_a_failed_commit_keeps_the_genotypes_it_would_drop(
         ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
         with pytest.raises(ValueError, match="was not kept"):
             _ = dying.genotype
+
+
+def test_individuals_of_one_run_are_saved_into_another(
+    tmp_path: Path,
+) -> None:
+    """Saved by run A, put in run B: B stores them as new rows."""
+    with EA(
+        make_pop(2), [noop], db_file_path=tmp_path / "a.db", quiet=True
+    ) as first:
+        moved = first.population.to_list()
+    with EA(
+        Population([make_ind(9), *moved]),
+        [noop],
+        db_file_path=tmp_path / "b.db",
+        quiet=True,
+    ) as second:
+        assert [ind.id for ind in second.population] == [1, 2, 3]
+    with Archive(tmp_path / "b.db") as archive:
+        stored = sorted(
+            repr(ind.genotype) for ind in archive.random_population(3)
+        )
+    assert stored == ["[0.0]", "[1.0]", "[9.0]"]
+    assert _ids(tmp_path / "a.db") == [1, 2]
+
+
+def test_a_fetched_row_stays_in_its_own_run(tmp_path: Path) -> None:
+    """A run's own rows are updated, not copied, after a fetch."""
+    with EA(
+        make_pop(2), [noop], db_file_path=tmp_path / "run.db", quiet=True
+    ) as ea:
+        ea.fetch_population()
+        ea.population[0].tags = {"seen": True}
+        ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
+    rows = _stored_rows(tmp_path / "run.db")
+    assert [(r.id, r.tags) for r in rows] == [(1, {"seen": True}), (2, {})]

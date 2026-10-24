@@ -17,7 +17,11 @@ from sqlalchemy import Connection, Engine, create_engine, func, insert
 from sqlmodel import Session, col, or_, select
 
 from seachange.codecs import Genotype
-from seachange.ea_database import leave_write_ahead, setup_database
+from seachange.ea_database import (
+    file_identity,
+    leave_write_ahead,
+    setup_database,
+)
 from seachange.ea_operation import Operation
 from seachange.ea_settings import (
     DBHandlingMode,
@@ -184,15 +188,19 @@ class EA[G = Genotype]:
         # read from the new, empty one: read it now
         for ind in population:
             ind.read_genotype_if_in(path)
-            if ind.from_another_file():
-                # Drawn from an Archive to seed this run: it starts alive,
-                # as restart's survivors do
-                ind.alive = True
         self.engine: Engine = setup_database(
             db_file_path=path,
             db_handling=db_handling or config.db_handling,
             console=self.console,
         )
+        with self.engine.connect() as connection:
+            self._identity = file_identity(connection)
+        for ind in population:
+            ind.leave_other_run(self._identity)
+            if ind.from_another_file():
+                # Drawn from an Archive, or saved by another run, to seed
+                # this run: it starts alive, as restart's survivors do
+                ind.alive = True
         self.population: Population[G] = population
         self._commit()
         self.console.rule("[blue]EA Initialized")
@@ -473,8 +481,10 @@ class EA[G = Genotype]:
         # A population may hold one individual twice
         present = list({id(ind): ind for ind in self.population}.values())
         for ind in present:
+            ind.leave_other_run(self._identity)
             if is_new(ind) and ind.from_another_file():
-                # Drawn from an Archive: born in this run when it joins it
+                # Drawn from an Archive or saved by another run: born in
+                # this run when it joins it
                 ind.time_of_birth = -1
             if ind.time_of_birth == -1:
                 ind.time_of_birth = self.current_generation
@@ -497,7 +507,7 @@ class EA[G = Genotype]:
             for ind, old in ids:
                 ind.id = old
             raise
-        mark_saved(saved)
+        mark_saved(saved, self._identity)
         mark_genotypes_saved(present, dropped)
 
     def _keep_ranked(
@@ -615,6 +625,8 @@ class EA[G = Genotype]:
         with Session(self.engine) as session:
             rows = Population(list(session.exec(statement).all()))
             load_genotypes(session.connection(), rows.to_list())
+        for row in rows:
+            row.stored_in(self._identity)
         # The run stored these rows, so their genotypes are of G
         return cast("Population[G]", rows)
 

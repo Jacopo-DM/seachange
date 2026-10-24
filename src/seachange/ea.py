@@ -178,8 +178,13 @@ class EA[G = Genotype]:
         self.console: Console = Console(
             quiet=quiet if quiet is not None else config.quiet,
         )
+        path = db_file_path or config.db_file_path
+        # A genotype not read yet from the file this run replaces would be
+        # read from the new, empty one: read it now
+        for ind in population:
+            ind.read_genotype_if_in(path)
         self.engine: Engine = setup_database(
-            db_file_path=db_file_path or config.db_file_path,
+            db_file_path=path,
             db_handling=db_handling or config.db_handling,
             console=self.console,
         )

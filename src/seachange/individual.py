@@ -327,6 +327,18 @@ class Individual[G = Genotype](SQLModel, table=True):
             _genotype=None, _genotype_unsaved=False, _genotype_source=source
         )
 
+    def read_genotype_if_in(self, path: Path) -> None:
+        """Read the genotype now if it is still stored in the file ``path``.
+
+        Parameters
+        ----------
+        path : Path
+            A database file about to be replaced.
+        """
+        source = self._genotype_source
+        if source is not None and source.path == path.resolve():
+            _ = self.genotype_
+
     def unsaved_genotype(self) -> object | None:
         """Return the genotype if a run's database does not hold it yet.
 
@@ -584,8 +596,8 @@ def save_individuals[G](
         If two stored individuals are the same row, as the ORM refused.
     StaleDataError
         If a stored individual's row is not in this file, as when an
-        individual from another run's database is saved here, or one from
-        ``Archive`` (it keeps the key of its own file's row).
+        individual read from another run's database through a session of
+        its own is saved here (``Archive``'s individuals are new).
     """
     table = SQLModel.metadata.tables["individual"]
     names = list(Individual.model_fields)

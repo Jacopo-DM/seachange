@@ -243,6 +243,26 @@ def test_archive_draws_are_saved_into_a_new_run_as_new_rows(
     )
 
 
+def test_archive_draws_survive_a_new_run_replacing_their_file(
+    tmp_path: Path,
+) -> None:
+    """A run written over the archive's own file reads the genotypes first."""
+    path = tmp_path / "run.db"
+    EA(make_pop(SIZE), [noop], db_file_path=path, quiet=True).close()
+    with Archive(path) as archive:
+        drawn = archive.random_population(2).to_list()
+    with Archive(path) as archive:
+        expected = sorted(
+            repr(ind.genotype) for ind in archive.random_population(SIZE)
+        )
+    with EA(Population(drawn), [noop], db_file_path=path, quiet=True):
+        pass
+    with Archive(path) as archive:
+        stored = [repr(ind.genotype) for ind in archive.random_population(2)]
+    assert set(stored) <= set(expected)
+    assert len(stored) == 2  # ruff: ignore[magic-value-comparison]
+
+
 def test_a_closed_run_reads_in_a_read_only_folder(tmp_path: Path) -> None:
     """Closing leaves WAL mode, which needs a writable folder to read."""
     folder = tmp_path / "run"

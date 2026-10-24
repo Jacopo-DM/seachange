@@ -1,18 +1,36 @@
+<div align="center">
+
+<img src="docs/logo.svg" alt="seachange logo: receding waves on an ink-blue tile, the nearest one gold" width="160">
+
 # seachange
 
-seachange runs generational evolutionary algorithms and keeps every individual in a SQLite database. You write each step of a generation (evaluate, select, mutate, retire) as a plain function that takes a population and returns one. The engine runs those functions in order once per generation and saves the result. Because every generation is on disk, you can stop a run, query it afterwards, or restart it from any generation.
+Generational evolutionary algorithm engine with a SQLite-backed population, extracted from ARIEL.
 
-It started as the evolution engine of [ARIEL](https://github.com/ci-group/ariel), a robot evolution framework, and holds the parts that have nothing to do with robots: the engine, random generators and mutators for integer and float genomes, crossover operators, and a RevDE optimizer.
+[![CI][ci-shield]][ci-url]
+[![Docs][docs-shield]][docs-url]
+[![PyPI][pypi-shield]][pypi-url]
+[![License][license-shield]][license-url]
+[![Last commit][commit-shield]][commit-url]
+
+[![Python][tool-python-shield]][tool-python-url]
+[![uv][tool-uv-shield]][tool-uv-url]
+[![NumPy][tool-numpy-shield]][tool-numpy-url]
+[![Pydantic][tool-pydantic-shield]][tool-pydantic-url]
+[![SQLite][tool-sqlite-shield]][tool-sqlite-url]
+
+[Docs](https://jacopo-dm.github.io/seachange/) · [Report a bug][issues-url]
+
+</div>
 
 ## Installation
 
-seachange needs Python 3.13 or later. Add it to your project with uv:
+Add it to your project with uv:
 
 ```bash
 uv add seachange
 ```
 
-## Example
+## Usage
 
 One-max: evolve 20-bit strings until every bit is 1. Each generation adds one mutated child per parent from the better half, scores the new individuals, and retires the worst so twenty stay alive.
 
@@ -90,14 +108,42 @@ ea = EA.restart(
 
 Without `db_file_path`, the new run would write to the default `__data__/database.db`, the file you are restarting from, so `EA.restart` raises `ValueError` instead of overwriting it. Pass `generation=` to continue from an earlier generation. The new file starts with the old run's history up to that generation, under the same ids and generation numbers, so it answers questions about the whole run on its own.
 
+## Overview
+
+seachange runs generational evolutionary algorithms and keeps every individual in a SQLite database. You write each step of a generation (evaluate, select, mutate, retire) as a plain function that takes a population and returns one. The engine runs those functions in order once per generation and saves the result. Because every generation is on disk, you can stop a run, query it afterwards, or restart it from any generation.
+
+It started as the evolution engine of [ARIEL](https://github.com/ci-group/ariel), a robot evolution framework, and holds the parts that have nothing to do with robots: the engine, random generators and mutators for integer and float genomes, crossover operators, and a RevDE optimizer.
+
 ## Genotypes
 
 A genotype can be a list or dict of JSON values, or a numpy array, which comes back from the database as the same array, dtype and shape included, and is stored as raw bytes. Other types, such as PyTorch tensors, need a small codec registered with `register_codec`. [docs/genotypes.md](docs/genotypes.md) explains how genotypes are stored and typed, and [examples/a3_numpy_genotypes.py](examples/a3_numpy_genotypes.py) evolves float32 weights.
+
+## Documentation
+
+The documentation is at https://jacopo-dm.github.io/seachange/: a guide to how genotypes are stored and typed, and a reference for every public class and function. The Sphinx sources are in [docs/](docs/).
 
 ## License
 
 GPL-3.0-or-later, the same as ARIEL, which seachange's code comes from. See [LICENSE](LICENSE).
 
-## Documentation
-
-The documentation is at https://jacopo-dm.github.io/seachange/: a guide to how genotypes are stored and typed, and a reference for every public class and function. The Sphinx sources are in [docs/](docs/).
+[ci-shield]: https://img.shields.io/github/actions/workflow/status/Jacopo-DM/seachange/ci.yml?branch=main&label=CI
+[ci-url]: https://github.com/Jacopo-DM/seachange/actions/workflows/ci.yml
+[docs-shield]: https://img.shields.io/github/actions/workflow/status/Jacopo-DM/seachange/docs.yml?branch=main&label=docs
+[docs-url]: https://github.com/Jacopo-DM/seachange/actions/workflows/docs.yml
+[pypi-shield]: https://img.shields.io/pypi/v/seachange
+[pypi-url]: https://pypi.org/project/seachange/
+[license-shield]: https://img.shields.io/badge/license-GPL--3.0--or--later-blue
+[license-url]: LICENSE
+[commit-shield]: https://img.shields.io/github/last-commit/Jacopo-DM/seachange
+[commit-url]: https://github.com/Jacopo-DM/seachange/commits
+[tool-python-shield]: https://img.shields.io/badge/Python-3.13%2B-3776AB?style=for-the-badge&logo=python&logoColor=white
+[tool-python-url]: https://www.python.org/
+[tool-uv-shield]: https://img.shields.io/badge/uv-DE5FE9?style=for-the-badge&logo=uv&logoColor=white
+[tool-uv-url]: https://docs.astral.sh/uv/
+[tool-numpy-shield]: https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white
+[tool-numpy-url]: https://numpy.org/
+[tool-pydantic-shield]: https://img.shields.io/badge/Pydantic-E92063?style=for-the-badge&logo=pydantic&logoColor=white
+[tool-pydantic-url]: https://docs.pydantic.dev/
+[tool-sqlite-shield]: https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white
+[tool-sqlite-url]: https://www.sqlite.org/
+[issues-url]: https://github.com/Jacopo-DM/seachange/issues

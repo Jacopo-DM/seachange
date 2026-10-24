@@ -6,6 +6,7 @@ from typing import Self, cast
 
 import numpy as np
 from sqlalchemy import Engine, create_engine, func
+from sqlalchemy.orm import make_transient
 from sqlmodel import Session, col, select
 from sqlmodel.sql.expression import SelectOfScalar
 
@@ -192,7 +193,8 @@ class Archive[G = Genotype]:
 
     def _read_genotypes_later(self, rows: list[Individual]) -> None:
         # Each genotype is read from the file when first asked for. The ids
-        # go, so callers may add these to a new run as new rows.
+        # go, and with them SQLAlchemy's key for this file's row, so
+        # callers may add these to a new run as new rows.
         path = self.db_path.resolve()
         for ind in rows:
             ind.read_genotype_from(
@@ -200,6 +202,7 @@ class Archive[G = Genotype]:
                     path=path, row_id=cast("int", ind.id), layout=self._layout
                 )
             )
+            make_transient(ind)
             ind.id = None
 
     # -- Single-individual queries ---------------------------------------------

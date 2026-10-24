@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Individuals drawn from `Archive` can seed a new run.** `archive.random_population(3)` and the other draws used to raise `StaleDataError` when added to a new run's population: the row kept its old file's identity. They are now saved as new rows, with fresh ids, and their genotypes are copied from the old file.
+
 ### Changed
 
 - **A generation is saved in a few batched statements.** `EA` used to save each individual through the ORM, one statement per row; it now writes each generation with one insert of the new individuals, one update per set of changed columns and one write of the new genotypes. Ids come out as before: each new individual gets the next number, in population order. A dict changed in place (`ind.tags["k"] = 1`) is still not saved; assign it. Errors are as before: an individual whose row is not in the run's file raises `StaleDataError`, and two objects for one row raise `InvalidRequestError`; after a failed commit, the new individuals have no ids again.

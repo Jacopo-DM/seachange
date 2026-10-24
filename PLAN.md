@@ -103,8 +103,6 @@ Approved 2026-10-21. One task per commit.
 
 ## Open questions
 
-- Archive rows into a new run (found by goal 13's review, 2026-10-24; asked 2026-10-24): `Archive` sets each drawn individual's `id` to `None` so it can be added to a new run (its `_read_genotypes_later` comment says so), but SQLAlchemy keeps the row's key, so saving it raises `StaleDataError` (`UPDATE ... 0 were matched`), on `main` before goal 13 and now. The Unreleased CHANGELOG entry said they are saved as new rows until 2f9f015. Fixing it (also `make_transient` in `_read_genotypes_later`) changes behaviour, so it waits for the user.
-
 Goal 8's three questions were answered on 2026-10-21 (DESIGN.md Specs, goal 8).
 
 ## Known problems

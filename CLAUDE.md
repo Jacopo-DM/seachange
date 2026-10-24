@@ -26,7 +26,7 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 | Lint | `uv run --no-sync ruff check --no-fix .` | passes, <1 s; without `--no-fix` it rewrites files (`fix = true` in the template) |
 | Types (mypy) | `uv run --no-sync mypy .` | passes, 52 files (2026-10-23), <1 s; does not read notebooks |
 | Types (ty, advisory) | `uv run --locked ty check` | 0 diagnostics; also checks the notebooks, so a type error in a notebook cell shows here |
-| Tests | `uv run --no-sync pytest -q` | 316 passed, 100% branch coverage, 8 to 15 s (about twice that while another job loads the machine); no warnings; `pytest.ini` turns a leaked SQLite connection into a failure |
+| Tests | `uv run --no-sync pytest -q` | 317 passed, 100% branch coverage, 8 to 15 s (about twice that while another job loads the machine); no warnings; `pytest.ini` turns a leaked SQLite connection into a failure |
 | Functional notebooks | `uv run --locked python tools/run_notebooks.py` | 6 PASS, 13 to 35 s (2026-10-22 and 2026-10-23); runs each `tests/functional/*.ipynb` in a fresh kernel in a temp folder, writes nothing back. `--save <notebook>` refreshes a notebook's committed outputs after a change; run it on every notebook the change affects. The pre-push hook runs all of them |
 | Docs | `uv run --no-sync sphinx-build -W --keep-going -b html docs docs/_build/html` | passes, ~2 s; same command as `docs.yml` |
 | Docs, shortcut | `uv-docs build` | passes, ~2 s; the shell function in `~/Functions/functions/my-funcs` that runs the build above with `--locked --group docs` |

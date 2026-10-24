@@ -195,24 +195,52 @@ def test_one_row_held_twice_is_refused(tmp_path: Path) -> None:
 
 
 def test_a_failed_commit_gives_new_individuals_their_ids_back(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """New individuals of a refused commit are new again, without ids."""
+    with EA(
+        make_pop(1), [noop], db_file_path=tmp_path / "run.db", quiet=True
+    ) as ea:
+        fresh = make_pop(2).to_list()
+        ea.population = Population([*ea.population, *fresh])
+
+        def refuse(*_args: object) -> None:
+            msg = "disk full"
+            raise OSError(msg)
+
+        monkeypatch.setattr("seachange.ea.save_genotypes", refuse)
+        with pytest.raises(OSError, match="disk full"):
+            ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
+        assert [ind.id for ind in fresh] == [None, None]
+        monkeypatch.undo()
+        ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
+        assert [ind.id for ind in fresh] == [2, 3]
+    assert _ids(tmp_path / "run.db") == [1, 2, 3]
+
+
+def test_archive_draws_are_saved_into_a_new_run_as_new_rows(
+    tmp_path: Path,
+) -> None:
+    """Individuals from Archive get fresh ids and keep their genotypes."""
     EA(
         make_pop(SIZE), [noop], db_file_path=tmp_path / "old.db", quiet=True
     ).close()
     with Archive(tmp_path / "old.db") as archive:
         drawn = archive.random_population(2).to_list()
-    fresh = Individual()
-    with pytest.raises(StaleDataError):
-        EA(
-            Population([fresh, *drawn]),
-            [noop],
-            db_file_path=tmp_path / "new.db",
-            quiet=True,
-        )
-    assert fresh.id is None
-    assert _ids(tmp_path / "new.db") == []
+    genotypes = [ind.genotype for ind in drawn]
+    with EA(
+        Population([Individual(), *drawn]),
+        [noop],
+        db_file_path=tmp_path / "new.db",
+        quiet=True,
+    ):
+        pass
+    assert _ids(tmp_path / "new.db") == [1, 2, 3]
+    with Archive(tmp_path / "new.db") as archive:
+        stored = archive.random_population(3).to_list()
+    assert sorted(map(repr, genotypes)) == sorted(
+        repr(ind.genotype) for ind in stored if not ind.requires_init
+    )
 
 
 def test_a_closed_run_reads_in_a_read_only_folder(tmp_path: Path) -> None:

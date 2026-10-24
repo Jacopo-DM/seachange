@@ -576,7 +576,7 @@ def save_individuals[G](
     Returns
     -------
     list[Individual]
-        The individuals this wrote, for ``mark_saved``.
+        The individuals inserted or assigned to, for ``mark_saved``.
 
     Raises
     ------
@@ -614,7 +614,12 @@ def save_individuals[G](
             [{name: getattr(ind, name) for name in names} for ind in new],
         )
     by_columns: dict[tuple[str, ...], list[Individual[G]]] = {}
-    for ind in stored:
+    # Assigned since the last save, changed or not: the ORM's flush clears
+    # what it saw of each, so mark_saved must too
+    assigned = [
+        ind for ind in stored if len(_state(ind).unmodified) < len(names)
+    ]
+    for ind in assigned:
         state = _state(ind)
         changed = tuple(
             name
@@ -634,7 +639,9 @@ def save_individuals[G](
         result = connection.execute(
             statement,
             [
-                {"row_id": ind.id}
+                # The row it was read as: a changed id moves the row, as
+                # the ORM's UPDATE ... SET id did
+                {"row_id": _row_id(ind)}
                 | {f"new_{name}": getattr(ind, name) for name in changed}
                 for ind in group
             ],
@@ -645,7 +652,13 @@ def save_individuals[G](
                 f"{len(group)} row(s); {result.rowcount} were matched."
             )
             raise StaleDataError(msg)
-    return new + [ind for group in by_columns.values() for ind in group]
+    return new + assigned
+
+
+def _row_id(ind: object) -> object:
+    # The id in a stored individual's key: (class, (id,), None)
+    key = cast("tuple[object, tuple[object], object]", _state(ind).key)
+    return key[1][0]
 
 
 def mark_saved[G](individuals: Sequence[Individual[G]]) -> None:

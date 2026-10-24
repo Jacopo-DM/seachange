@@ -5,7 +5,7 @@ from contextlib import closing
 from pathlib import Path
 
 import pytest
-from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.exc import IntegrityError, InvalidRequestError
 from sqlalchemy.orm.exc import StaleDataError
 from sqlmodel import Session, col, create_engine, select
 
@@ -120,10 +120,12 @@ def test_a_row_from_another_file_assigned_its_own_values_writes_nothing(
     ).close()
     stranger = _stored_rows(tmp_path / "big.db")[-1]
     stranger.time_of_death = stranger.time_of_death
+    before = (tmp_path / "small.db").read_bytes()
     engine = create_engine(f"sqlite:///{tmp_path / 'small.db'}")
     with engine.begin() as connection:
-        assert save_individuals(connection, [stranger]) == []
+        save_individuals(connection, [stranger])
     engine.dispose()
+    assert (tmp_path / "small.db").read_bytes() == before
 
 
 def test_a_dict_changed_in_place_after_a_save_is_not_saved(
@@ -135,6 +137,45 @@ def test_a_dict_changed_in_place_after_a_save_is_not_saved(
     ) as ea:
         (ind,) = ea.population
         ind.tags = {"a": 1}
+        ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
+        ind.tags_["b"] = 2
+        ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
+    assert [row.tags for row in _stored_rows(tmp_path / "run.db")] == [{"a": 1}]
+
+
+def test_a_changed_id_moves_the_row_and_overwrites_none(
+    tmp_path: Path,
+) -> None:
+    """A stored individual given a taken id fails, as the ORM's UPDATE did."""
+    with EA(
+        make_pop(3), [noop], db_file_path=tmp_path / "run.db", quiet=True
+    ) as ea:
+        last = ea.population[-1]
+        last.id = 1
+        last.tags = {"moved": True}
+        with pytest.raises(IntegrityError, match="UNIQUE"):
+            ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
+        last.id = 9
+        ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
+    rows = _stored_rows(tmp_path / "run.db")
+    assert [(row.id, row.tags) for row in rows] == [
+        (1, {}),
+        (2, {}),
+        (9, {"moved": True}),
+    ]
+
+
+def test_an_assignment_that_changed_nothing_is_cleared_by_a_save(
+    tmp_path: Path,
+) -> None:
+    """After a save, a dict changed in place stays unsaved, as in the ORM."""
+    with EA(
+        make_pop(1), [noop], db_file_path=tmp_path / "run.db", quiet=True
+    ) as ea:
+        (ind,) = ea.population
+        ind.tags = {"a": 1}
+        ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
+        ind.tags_ = {"a": 1}
         ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
         ind.tags_["b"] = 2
         ea._commit()  # ruff: ignore[private-member-access]  # the commit under test

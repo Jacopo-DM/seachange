@@ -103,8 +103,6 @@ Approved 2026-10-21. One task per commit.
 
 ## Open questions
 
-- Docs template deploy (found 2026-10-23, user chose to fix the template): `docs.yml` puts every run, pull requests included, in one `pages` concurrency group, so a pull request's docs build can replace a waiting deploy from `main` and the site skips that update. The fix belongs in `~/Functions/_rsync/python-docs/.github/workflows/docs.yml` (the user's `~/Functions` session, prompt given 2026-10-23): give only the deploy job the `pages` group. Then `git -C ~/Functions pull --ff-only` here and apply the same change to this repo's `docs.yml` by hand, keeping its newer pins (setup-uv 10.3.0, uv 0.13.4, from Dependabot), and commit.
-
 - Archive rows into a new run (found by goal 13's review, 2026-10-24; asked 2026-10-24): `Archive` sets each drawn individual's `id` to `None` so it can be added to a new run (its `_read_genotypes_later` comment says so), but SQLAlchemy keeps the row's key, so saving it raises `StaleDataError` (`UPDATE ... 0 were matched`), on `main` before goal 13 and now. The Unreleased CHANGELOG entry said they are saved as new rows until 2f9f015. Fixing it (also `make_transient` in `_read_genotypes_later`) changes behaviour, so it waits for the user.
 
 Goal 8's three questions were answered on 2026-10-21 (DESIGN.md Specs, goal 8).

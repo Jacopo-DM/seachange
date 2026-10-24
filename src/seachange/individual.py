@@ -310,8 +310,9 @@ class Individual[G = Genotype](SQLModel, table=True):
             row = self._genotype_source.row_id
         if stored is None and not self.requires_init:
             msg = (
-                f"genotype of row {row} was not kept: its run dropped "
-                "it when the individual died (keep_genotypes)"
+                f"genotype of row {row} was not kept: keep_genotypes "
+                "dropped it when the individual died, in this run or in "
+                "the run it was drawn from"
             )
             raise ValueError(msg)
         if stored is None:

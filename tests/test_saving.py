@@ -569,3 +569,25 @@ def test_a_fetched_row_stays_in_its_own_run(tmp_path: Path) -> None:
         ea._commit()  # ruff: ignore[private-member-access]  # the commit under test
     rows = _stored_rows(tmp_path / "run.db")
     assert [(r.id, r.tags) for r in rows] == [(1, {"seen": True}), (2, {})]
+
+
+def test_a_draw_whose_genotype_was_dropped_says_where(tmp_path: Path) -> None:
+    """The error of a dropped genotype names the run it was drawn from."""
+    old = tmp_path / "old.db"
+    with EA(
+        make_pop(SIZE), [noop], db_file_path=old, keep_genotypes=[], quiet=True
+    ) as ea:
+        for ind in ea.population:
+            ind.alive = False
+        ea._commit()  # ruff: ignore[private-member-access]  # dead rows to draw
+    with Archive(old) as archive:
+        (draw,) = archive.random_population(1, only_dead=True)
+    with EA(
+        Population([draw]), [noop], db_file_path=tmp_path / "new.db", quiet=True
+    ):
+        pass
+    with (
+        Archive(tmp_path / "new.db") as archive,
+        pytest.raises(ValueError, match="the run it was drawn from"),
+    ):
+        _ = archive.random_population(1)[0].genotype

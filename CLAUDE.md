@@ -68,5 +68,7 @@ From the repo root. Python 3.13 (`.python-version`), uv 0.13.1. Checked 2026-10-
 
 ## Things that bite
 
+- A note meant for another session or project (a reply to a brief, a result to forward) goes in `briefs/`, committed: the session scratch folder is cleared when Claude Code restarts (the reply to the multineat brief was lost that way on 2026-10-24 and rewritten from the conversation).
+
 - Other projects on the Lenovo run heavy jobs that use every core (on 2026-10-23 an ARIEL run with 11 `multiprocessing` workers sent the load average to 15 and made seachange's step about twice as slow, with runs from 45 to 70 ms). Check `uptime` before any benchmark and wait until the load is below 2; do not stop another project's processes.
 - The Clean install command used to run the example from the repo root, so each check replaced `__data__/database.db` there (it did on 2026-10-23). Commands that run an example or an `EA` start in a temp folder, as the Clean install row now does.
